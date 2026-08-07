@@ -7,18 +7,13 @@ import {
   Briefcase,
   UserRound,
   ChevronDown,
-  ClipboardCheck,
   FileSignature,
-  Package,
   ShoppingCart,
   House,
   Handshake,
   CalendarDays,
   CalendarClock,
-  LayoutGrid,
-  NotebookPen,
   Settings,
-  Sparkles,
   SquareCheckBig,
   LogOut,
   PanelLeftClose,
@@ -112,7 +107,6 @@ export function Sidebar({
   // Itens de uso geral, sempre visíveis (estilo Groner: soltos no topo)
   const topItems: NavItem[] = [
     { href: "/", label: "Início", icon: House },
-    { href: "/dashboards", label: "Dashboards", icon: LayoutGrid },
     { href: "/agenda", label: "Agenda", icon: CalendarDays },
     { href: "/disponibilidade", label: "Disponibilidade", icon: CalendarClock },
   ].filter((i) => ok(i.href));
@@ -141,15 +135,6 @@ export function Sidebar({
         { href: "/vendas", label: "Vendas", icon: ShoppingCart },
       ].filter((i) => ok(i.href)),
     },
-    {
-      title: "Operações & Projetos",
-      icon: Package,
-      items: [
-        { href: "/onboarding", label: "Onboarding", icon: ClipboardCheck },
-        { href: "/briefings", label: "Briefings", icon: NotebookPen },
-        { href: "/prompts", label: "Prompts & IA", icon: Sparkles },
-      ].filter((i) => ok(i.href)),
-    },
   ].filter((s) => s.items.length);
 
   const isActive = (href: string) =>
@@ -169,7 +154,6 @@ export function Sidebar({
     { href: "/crm", label: "Negócios", icon: Handshake, badge: crmCount },
     { href: "/contatos", label: "Contatos", icon: UserRound },
     { href: "/atividades", label: "Tarefas", icon: SquareCheckBig, badge: tasksLate },
-    { href: "/dashboards", label: "Dashboards", icon: LayoutGrid },
     { href: "/agenda", label: "Agenda", icon: CalendarDays },
   ].filter((i) => ok(i.href));
 

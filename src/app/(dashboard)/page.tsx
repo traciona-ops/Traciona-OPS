@@ -16,6 +16,7 @@ import { createClient } from "@/lib/supabase/server";
 import { currencyBRL } from "@/lib/utils";
 import { ymdBR, monthBoundsBR, TZ } from "@/lib/dates";
 import { GoalBar } from "@/components/goal-bar";
+import { can } from "@/lib/permissions";
 
 export const metadata = { title: "Início" };
 
@@ -225,21 +226,15 @@ export default async function Home() {
             <p className="mt-0.5 text-xs text-[var(--color-muted-2)]">
               ganhos em negócios este mês
             </p>
-            {goalTarget > 0 ? (
-              <GoalBar
-                month={monthKey}
-                revenue={wonMonth}
-                target={goalTarget}
-                canEdit={false}
-              />
-            ) : (
-              <Link
-                href="/dashboards"
-                className="mt-2 inline-block text-xs text-[var(--color-primary)] hover:underline"
-              >
-                Definir a meta do mês nos Dashboards
-              </Link>
-            )}
+            {/* A meta era editada na tela de Dashboards, que saiu. Sem isto,
+                definir a meta do mês perderia a única porta de entrada — então
+                a barra passou a ser editável aqui por admin e gestor. */}
+            <GoalBar
+              month={monthKey}
+              revenue={wonMonth}
+              target={goalTarget}
+              canEdit={can.viewReports(profile.role)}
+            />
           </section>
 
           {/* Pendências */}

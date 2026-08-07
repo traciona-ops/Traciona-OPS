@@ -22,8 +22,9 @@ Sempre que uma alteração mudar a **estrutura** do projeto — módulo novo, ro
 ## Mapa do sistema (resumo — detalhes em docs/TRACIONA-SISTEMA-REGRAS.md)
 
 - **Stack:** Next.js 16 (App Router, Server Actions), Supabase (Postgres + RLS + Auth + Storage), Tailwind, deploy na Vercel (`traciona-eco-sistema.vercel.app`, deploy via `npx vercel deploy --prod --yes --scope adriano-advanceds-projects`).
-- **Módulos (rotas em `src/app/(dashboard)/`):** Início, Dashboards, Agenda, Disponibilidade; setor Comercial: Contatos, Negócios (CRM), Tarefas Comerciais, Contratos, Vendas; setor Operações & Projetos: Onboarding, Briefings, Prompts & IA; Settings (equipe, permissões, integrações, WhatsApp).
-- **Links públicos:** `/f/[token]` (OPS Form) e `/o/[token]` (onboarding do cliente) — usam `createAdminClient()` (service role).
+- **Módulos (rotas em `src/app/(dashboard)/`):** Início, Agenda, Disponibilidade, Playbooks; setor Comercial: Contatos, Negócios (CRM), Tarefas Comerciais, Contratos, Vendas; Settings (equipe, permissões, integrações, WhatsApp).
+- **Removidos em 07/08/2026** (a pedido, código apagado; commit anterior à remoção guardado no git): Dashboards, Ops Apps, Onboarding, Briefings, Prompts & IA, e com eles o setor "Operações & Projetos" e o link público `/o/[token]`. As tabelas `onboarding_requests`, `briefings`, `briefing_comments`, `prompts`, `prompt_versions`, `prompt_folders` e `dashboards` seguem no banco, órfãs e vazias. A meta do mês, que era editada em Dashboards, passou a ser editável no Início (`GoalBar`, admin/gestor).
+- **Links públicos:** `/f/[token]` (OPS Form) — usa `createAdminClient()` (service role).
 - **WhatsApp:** DinastiAPI (wuzapi) — envio, webhook em `/api/whatsapp/webhook`, sessão/QR, áudio convertido antes do envio. OPS Chat em `/chat` + chat dock.
 - **Mensagens agendadas:** pg_cron no Supabase chama `/api/cron/dispatch` (header `x-cron-secret`); o SQL do cron não está no repo.
 - **Integrações:** Autentique (contratos, GraphQL v2), Asaas (cobranças/assinaturas, webhook em `/api/asaas/webhook`), Anthropic SDK (análise de lead em `src/lib/ai.ts`).
