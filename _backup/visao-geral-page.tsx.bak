@@ -1,0 +1,337 @@
+import Link from "next/link";
+import {
+  Users,
+  DollarSign,
+  Trophy,
+  TrendingUp,
+  ArrowRight,
+  ArrowUpRight,
+  ArrowDownRight,
+  Plus,
+  AlertCircle,
+  KanbanSquare,
+} from "lucide-react";
+import { getProfile } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import { currencyBRL } from "@/lib/utils";
+import { hourBR, fmtDayLongBR, monthBoundsBR, ymdBR } from "@/lib/dates";
+import { GoalBar } from "@/components/goal-bar";
+import type { Pipeline, PipelineStage } from "@/lib/types";
+
+type KpiLead = {
+  id: string;
+  stage_id: string | null;
+  pipeline_id: string | null;
+  value: number | null;
+  created_at: string;
+  won_at: string | null;
+  lost_at: string | null;
+  last_contact_at: string | null;
+};
+
+export const metadata = { title: "Visão Geral" };
+
+export default async function OverviewPage() {
+  const profile = await getProfile();
+  const supabase = await createClient();
+
+  const monthKey = ymdBR().slice(0, 7); // "2026-07"
+  const [leadsRes, pipelinesRes, stagesRes, goalRes] = await Promise.all([
+    supabase
+      .from("leads")
+      .select(
+        "id,stage_id,pipeline_id,value,created_at,won_at,lost_at,last_contact_at"
+      )
+      .limit(10000),
+    supabase
+      .from("pipelines")
+      .select("*")
+      .eq("archived", false)
+      .order("position"),
+    supabase.from("pipeline_stages").select("*"),
+    supabase
+      .from("org_goals")
+      .select("revenue_target")
+      .eq("month", monthKey)
+      .maybeSingle(),
+  ]);
+  const goalTarget = Number(
+    (goalRes.data as { revenue_target?: number } | null)?.revenue_target ?? 0
+  );
+  const canEditGoal = ["admin", "gestor"].includes(profile.role);
+
+  const allLeads = (leadsRes.data ?? []) as KpiLead[];
+  const pipelines = (pipelinesRes.data ?? []) as Pipeline[];
+  const stages = (stagesRes.data ?? []) as PipelineStage[];
+
+  // KPIs de VENDAS não misturam clientes ativos (funis de CS)
+  const csPipelineIds = new Set(pipelines.filter((p) => p.is_cs).map((p) => p.id));
+  const leads = allLeads.filter(
+    (l) => !l.pipeline_id || !csPipelineIds.has(l.pipeline_id)
+  );
+
+  const wonStageIds = new Set(stages.filter((s) => s.is_won).map((s) => s.id));
+  const lostStageIds = new Set(stages.filter((s) => s.is_lost).map((s) => s.id));
+
+  const now = new Date();
+  const { monthStart, lastMonthStart } = monthBoundsBR(now);
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
+
+  const openLeads = leads.filter(
+    (l) =>
+      l.stage_id && !wonStageIds.has(l.stage_id) && !lostStageIds.has(l.stage_id)
+  );
+  const staleLeads = openLeads.filter(
+    (l) => !l.last_contact_at || new Date(l.last_contact_at) < sevenDaysAgo
+  );
+  // Ganho = tem won_at (inclui os promovidos pro funil de CS)
+  const wonLeads = allLeads.filter((l) => l.won_at);
+  const wonThisMonth = wonLeads.filter((l) => new Date(l.won_at!) >= monthStart);
+  const pipelineValue = openLeads.reduce((a, l) => a + (l.value ?? 0), 0);
+  const revenueMonth = wonThisMonth.reduce((a, l) => a + (l.value ?? 0), 0);
+
+  const lostCount = leads.filter(
+    (l) => l.lost_at || (l.stage_id && lostStageIds.has(l.stage_id))
+  ).length;
+  const closedCount = wonLeads.length + lostCount;
+  const winRate =
+    closedCount > 0 ? Math.round((wonLeads.length / closedCount) * 100) : 0;
+
+  // Comparações vs mês passado (6.11: KPI sempre com referência)
+  const revenueLastMonth = wonLeads
+    .filter((l) => {
+      const d = new Date(l.won_at!);
+      return d >= lastMonthStart && d < monthStart;
+    })
+    .reduce((a, l) => a + (l.value ?? 0), 0);
+  const newThisMonth = leads.filter(
+    (l) => new Date(l.created_at) >= monthStart
+  ).length;
+  const newLastMonth = leads.filter((l) => {
+    const d = new Date(l.created_at);
+    return d >= lastMonthStart && d < monthStart;
+  }).length;
+  const pct = (cur: number, prev: number) =>
+    prev > 0 ? Math.round(((cur - prev) / prev) * 100) : cur > 0 ? 100 : 0;
+
+  const hour = hourBR(now);
+  const greeting =
+    hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+  const firstName = profile.name.split(" ")[0];
+  const dateLabel = fmtDayLongBR(now).toUpperCase();
+
+  const stats: {
+    label: string;
+    value: string;
+    icon: typeof Users;
+    color: string;
+    delta?: number;
+    deltaLabel?: string;
+    sub?: string;
+    extra?: React.ReactNode;
+  }[] = [
+    {
+      label: "Leads em aberto",
+      value: String(openLeads.length),
+      icon: Users,
+      color: "#1d6fff",
+      delta: pct(newThisMonth, newLastMonth),
+      deltaLabel: `${newThisMonth} novos este mês`,
+    },
+    {
+      label: "Valor no pipeline",
+      value: currencyBRL(pipelineValue),
+      icon: DollarSign,
+      color: "#0091b3",
+      sub: `em ${openLeads.length} negócios abertos`,
+    },
+    {
+      label: "Fechado no mês",
+      value: currencyBRL(revenueMonth),
+      icon: Trophy,
+      color: "#0ca678",
+      delta: pct(revenueMonth, revenueLastMonth),
+      deltaLabel: "vs mês passado",
+      extra: (
+        <GoalBar
+          month={monthKey}
+          revenue={revenueMonth}
+          target={goalTarget}
+          canEdit={canEditGoal}
+        />
+      ),
+    },
+    {
+      label: "Taxa de conversão",
+      value: `${winRate}%`,
+      icon: TrendingUp,
+      color: "#d97706",
+      sub: `${wonLeads.length} ganhos de ${closedCount} fechados`,
+    },
+  ];
+
+  const firstPipeline = pipelines[0];
+
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <div className="mx-auto max-w-6xl p-6 sm:p-8">
+        {/* Greeting header */}
+        <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-medium tracking-wider text-[var(--color-muted-2)]">
+              {dateLabel}
+            </p>
+            <h1 className="mt-1 text-3xl font-semibold tracking-tight">
+              {greeting}, {firstName}
+            </h1>
+            <p className="mt-1.5 text-sm text-[var(--color-muted)]">
+              Você tem{" "}
+              <span className="font-medium text-[var(--color-foreground)]">
+                {openLeads.length} leads em aberto
+              </span>
+              {staleLeads.length > 0 && (
+                <>
+                  {" — "}
+                  <span className="font-medium text-[var(--color-danger)]">
+                    {staleLeads.length} sem follow-up
+                  </span>
+                </>
+              )}
+              .
+            </p>
+          </div>
+          {firstPipeline && (
+            <Link
+              href={`/crm?p=${firstPipeline.id}`}
+              className="inline-flex h-10 items-center gap-2 rounded-xl bg-[var(--color-primary)] px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[var(--color-primary-hover)]"
+            >
+              <Plus className="h-4 w-4" />
+              Novo lead
+            </Link>
+          )}
+        </div>
+
+        {/* Stale banner */}
+        {staleLeads.length > 0 && firstPipeline && (
+          <Link
+            href={`/crm?p=${firstPipeline.id}`}
+            className="mb-6 flex items-center gap-2.5 rounded-xl border border-[var(--color-danger)]/20 bg-[var(--color-danger)]/8 px-4 py-3 text-sm text-[var(--color-danger)] transition-colors hover:bg-[var(--color-danger)]/12"
+          >
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>
+              {staleLeads.length} leads sem follow-up há +7 dias — comece por
+              esses.
+            </span>
+            <ArrowRight className="ml-auto h-4 w-4" />
+          </Link>
+        )}
+
+        {/* Stats */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {stats.map((s) => {
+            const Icon = s.icon;
+            return (
+              <div key={s.label} className="card p-5">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-xs text-[var(--color-muted)]">
+                    {s.label}
+                  </span>
+                  <div
+                    className="flex h-9 w-9 items-center justify-center rounded-xl"
+                    style={{ backgroundColor: `${s.color}18` }}
+                  >
+                    <Icon className="h-4 w-4" style={{ color: s.color }} />
+                  </div>
+                </div>
+                <p className="text-2xl font-semibold tracking-tight">
+                  {s.value}
+                </p>
+                <div className="mt-1.5 flex items-center gap-1.5 text-xs">
+                  {s.delta !== undefined && (
+                    <span
+                      className="inline-flex items-center gap-0.5 font-medium"
+                      style={{
+                        color:
+                          s.delta > 0
+                            ? "var(--color-success)"
+                            : s.delta < 0
+                            ? "var(--color-danger)"
+                            : "var(--color-muted)",
+                      }}
+                    >
+                      {s.delta > 0 ? (
+                        <ArrowUpRight className="h-3.5 w-3.5" />
+                      ) : s.delta < 0 ? (
+                        <ArrowDownRight className="h-3.5 w-3.5" />
+                      ) : null}
+                      {s.delta > 0 ? "+" : ""}
+                      {s.delta}%
+                    </span>
+                  )}
+                  <span className="text-[var(--color-muted-2)]">
+                    {s.deltaLabel ?? s.sub}
+                  </span>
+                </div>
+                {s.extra}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Pipelines */}
+        <div className="mt-8">
+          <h2 className="mb-3 text-sm font-semibold text-[var(--color-muted)]">
+            Pipelines
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {pipelines.map((p) => {
+              const count = allLeads.filter((l) => l.pipeline_id === p.id).length;
+              return (
+                <Link
+                  key={p.id}
+                  href={`/crm?p=${p.id}`}
+                  className="card card-hover group flex items-center justify-between p-4"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span
+                      className="h-2.5 w-2.5 rounded-full"
+                      style={{ backgroundColor: p.color }}
+                    />
+                    <div>
+                      <p className="text-sm font-medium">{p.name}</p>
+                      <p className="text-xs text-[var(--color-muted)]">
+                        {count} leads
+                      </p>
+                    </div>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-[var(--color-muted-2)] transition group-hover:translate-x-0.5 group-hover:text-[var(--color-primary)]" />
+                </Link>
+              );
+            })}
+            {pipelines.length === 0 && (
+              <div className="card col-span-full flex flex-col items-center gap-3 p-8 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--color-primary)]/10">
+                  <KanbanSquare className="h-6 w-6 text-[var(--color-primary)]" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Nenhum pipeline ainda</p>
+                  <p className="mt-1 text-sm text-[var(--color-muted)]">
+                    Crie seu primeiro funil de vendas para começar a organizar
+                    seus leads.
+                  </p>
+                </div>
+                <Link
+                  href="/crm"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[var(--color-primary)] px-3 text-sm font-medium text-white hover:bg-[var(--color-primary-hover)]"
+                >
+                  <Plus className="h-4 w-4" />
+                  Criar pipeline
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

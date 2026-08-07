@@ -1,0 +1,103 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node _shot.mjs)",
+      "Bash(node _ux.mjs)",
+      "Bash(node _funil.mjs)",
+      "Bash(node _dark.mjs)",
+      "Bash(node _dup.mjs)",
+      "Bash(node db-run.mjs supabase/migrations/0016_dedup_phone.sql)",
+      "Bash(node -e ' *)",
+      "Bash(node _race.mjs)",
+      "Bash(node _inspect.mjs)",
+      "Bash(node _cleanup.mjs)",
+      "Bash(node _cleanup.mjs --apply)",
+      "Bash(node db-run.mjs supabase/migrations/0017_lead_avatar.sql)",
+      "Bash(node _avatars.mjs)",
+      "Bash(node _avshot.mjs)",
+      "Bash(node _av2.mjs)",
+      "Bash(node _leadshot.mjs)",
+      "Bash(node _pfp.mjs)",
+      "Bash(node _funil2.mjs)",
+      "Bash(node _sel.mjs)",
+      "Bash(node _atv.mjs)",
+      "Bash(node _newlead.mjs)",
+      "Bash(node db-run.mjs supabase/migrations/0018_search_leads.sql)",
+      "Bash(node _search.mjs)",
+      "Bash(node db-run.mjs supabase/migrations/0019_new_lead_on_top.sql)",
+      "Bash(node _top.mjs)",
+      "Bash(node db-run.mjs supabase/migrations/0020_customer_success.sql)",
+      "Bash(npm run *)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(rm -f _build.log)",
+      "Bash(npx next *)",
+      "PowerShell(cd \"c:\\\\Users\\\\adria\\\\Traciona - Eco Sistema\"; Write-Output \"node: $\\(node -v\\)\"; Write-Output \"next exists: $\\(Test-Path node_modules\\\\.bin\\\\next.cmd\\)\"; Write-Output \"--- tsc check ---\"; npx tsc --noEmit 2>&1 | Select-Object -First 20)",
+      "Bash(node -e \"console.log\\('node-ok', 2+2\\)\")",
+      "Bash(node node_modules/typescript/lib/tsc.js --noEmit)",
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(ls node_modules/.bin/vercel*)",
+      "Bash(ls node_modules/vercel/dist/index.js)",
+      "Bash(node _cs.mjs)",
+      "Bash(node db-run.mjs supabase/migrations/0021_automations.sql)",
+      "Bash(node \"C:\\\\Users\\\\adria\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-adria-Traciona---Eco-Sistema\\\\7b61b6af-08c8-4aee-ab83-0f0155e3bda7\\\\scratchpad\\\\test-automation.mjs\")",
+      "Bash(cp \"C:\\\\Users\\\\adria\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-adria-Traciona---Eco-Sistema\\\\7b61b6af-08c8-4aee-ab83-0f0155e3bda7\\\\scratchpad\\\\test-automation.mjs\" \"c:\\\\Users\\\\adria\\\\Traciona - Eco Sistema\\\\_tmp_test_automation.mjs\")",
+      "Bash(node _tmp_test_automation.mjs)",
+      "Bash(node _tmp_inspect.mjs)",
+      "Bash(node _tmp_recover.mjs)",
+      "Bash(rm -f _tmp_test_automation.mjs _tmp_inspect.mjs _tmp_recover.mjs _tmp_verify.mjs)",
+      "Bash(ls _tmp_*.mjs)",
+      "Bash(rm -f _tmp_uitest.mjs _tmp_uidiag.mjs _tmp_uitest2.mjs)",
+      "Bash(python -c ' *)",
+      "Bash(PYTHONIOENCODING=utf-8 python -c ' *)",
+      "Bash(node db-run.mjs supabase/migrations/0022_fase1_confiabilidade.sql)",
+      "Bash(node \"C:/Users/adria/AppData/Roaming/npm/node_modules/vercel/dist/index.js\" --prod --yes --token=vcp_7U1aqTtxUhSNMDkMgouoeJCFl2IvIrTZZCoMeLiXsrtVZOE2091HikGp)",
+      "Bash(node db-run.mjs supabase/migrations/0023_automation_send.sql)",
+      "Bash(awk -F= '{print \"local len:\", length\\($2\\)}')",
+      "Bash(node \"C:/Users/adria/AppData/Roaming/npm/node_modules/vercel/dist/index.js\" env ls production --token=vcp_7U1aqTtxUhSNMDkMgouoeJCFl2IvIrTZZCoMeLiXsrtVZOE2091HikGp)",
+      "Bash(awk -F= '{print \"prefix:\", substr\\($2,1,7\\), \"...\"}')",
+      "Skill(claude-api)",
+      "Skill(claude-api:*)",
+      "Bash(node \"C:\\\\Program Files\\\\nodejs\\\\node_modules\\\\npm\\\\bin\\\\npm-cli.js\" install @anthropic-ai/sdk --no-audit --no-fund)",
+      "Bash(node \"C:\\\\Program Files\\\\nodejs\\\\node_modules\\\\npm\\\\bin\\\\npm-cli.js\" install @anthropic-ai/sdk@latest --no-audit --no-fund)",
+      "Bash(node -e \"console.log\\(require\\('@anthropic-ai/sdk/package.json'\\).version\\)\")",
+      "Bash(node db-run.mjs supabase/migrations/0024_metas.sql)",
+      "Bash(awk -F= '{print \"prefix:\", substr\\($2,1,7\\), \"len:\", length\\($2\\)}')"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -c 'import sys,json;d=json.load(sys.stdin);f=((d.get(\"tool_input\") or {}).get(\"file_path\") or \"\");sys.exit(0 if f.endswith((\".ts\",\".tsx\",\".js\",\".jsx\",\".mjs\",\".sql\",\".py\")) and \"graphify-out\" not in f else 1)' && \"C:/Users/adria/AppData/Local/Programs/Python/Python312/Scripts/graphify.EXE\" update \"C:/Users/adria/Traciona - Eco Sistema\" >/dev/null 2>&1 || true",
+            "async": true,
+            "timeout": 300,
+            "statusMessage": "graphify update (grafo do código)"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/Users/adria/AppData/Local/Programs/Python/Python312/Scripts/graphify.EXE hook-guard search"
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "C:/Users/adria/AppData/Local/Programs/Python/Python312/Scripts/graphify.EXE hook-guard read"
+          }
+        ]
+      }
+    ]
+  }
+}

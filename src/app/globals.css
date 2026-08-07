@@ -1,0 +1,261 @@
+@import "tailwindcss";
+
+/* O tema é escolhido pelo usuário e gravado em data-theme (theme-toggle.tsx).
+   Sem esta linha o `dark:` do Tailwind v4 escutaria prefers-color-scheme e
+   discordaria do toggle. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme {
+  /* Surfaces — light / arctic */
+  --color-background: #f6f8fc;
+  --color-surface: #ffffff;
+  --color-surface-2: #eef2f8;
+  --color-border: #e3e9f2;
+  --color-border-strong: #6f88ad;
+
+  /* Text — deep-navy / steel */
+  --color-foreground: #0f1c2e;
+  --color-muted: #5c6b85;
+  /* muted-2 é texto terciário de verdade (label, timestamp, contador), então
+     ele passa 4.5:1 como texto — não é um cinza decorativo. A hierarquia vem
+     de tamanho e peso, não de um tom ilegível. */
+  --color-muted-2: #5c6f8b;
+  /* Tinta única para qualquer fundo de acento (primary/success/info/warning/
+     danger). No claro os acentos são escuros e pedem tinta branca; no escuro
+     são claros e pedem tinta escura. */
+  --color-on-accent: #ffffff;
+
+  /* Brand — electric / power */
+  --color-primary: #055fff;
+  --color-primary-hover: #0043bf;
+  --color-primary-foreground: #ffffff;
+
+  /* Signals */
+  --color-success: #097d5a;
+  --color-info: #007793;
+  --color-warning: #a55b05;
+  --color-danger: #d61e24;
+  --color-danger-foreground: #ffffff;
+
+  /* Raio — controles < campos < cards < pílulas */
+  --radius-control: 0.5rem;
+  --radius-field: 0.625rem;
+  --radius-card: 0.875rem;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
+    sans-serif;
+}
+
+/* Elevação: offset + blur, nunca halo colorido sem deslocamento. No escuro a
+   sombra some contra o fundo, então ela ganha peso. */
+:root {
+  --shadow-card: 0 1px 2px rgba(15, 28, 46, 0.04),
+    0 2px 6px rgba(15, 28, 46, 0.05);
+  --shadow-elevated: 0 4px 12px rgba(15, 28, 46, 0.08),
+    0 2px 6px rgba(15, 28, 46, 0.05);
+}
+
+/* ---- Dark mode ----
+   Os tokens escuros vivem num único bloco; `light-dark()` não serve aqui
+   porque o toggle precisa sobrepor o SO. A media query só aponta para a
+   mesma lista via :root:not([data-theme="light"]).
+
+   Nota de contraste: no claro o acento é escuro o bastante para servir de
+   texto E de fundo para texto branco (mesma razão nos dois papéis). No
+   escuro isso é impossível — o acento precisa ser claro contra a superfície
+   escura, então o texto sobre ele vira escuro (--color-*-foreground). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-background: #0a1122;
+    --color-surface: #111a2e;
+    --color-surface-2: #1a2440;
+    --color-border: #23304a;
+    --color-border-strong: #606f8d;
+    --color-foreground: #e9eef7;
+    --color-muted: #9aabc7;
+    --color-muted-2: #7e8da7;
+    --color-on-accent: #08101f;
+    --color-primary: #4a8bf7;
+    --color-primary-hover: #86b2fa;
+    --color-primary-foreground: #08101f;
+    --color-success: #10b981;
+    --color-info: #22b8d6;
+    --color-warning: #f59e0b;
+    --color-danger: #f2555a;
+    --color-danger-foreground: #08101f;
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.32);
+    --shadow-elevated: 0 6px 20px rgba(0, 0, 0, 0.5),
+      0 2px 8px rgba(0, 0, 0, 0.35);
+  }
+}
+
+:root[data-theme="dark"] {
+  --color-background: #0a1122;
+  --color-surface: #111a2e;
+  --color-surface-2: #1a2440;
+  --color-border: #23304a;
+  --color-border-strong: #606f8d;
+  --color-foreground: #e9eef7;
+  --color-muted: #9aabc7;
+  --color-muted-2: #7e8da7;
+    --color-on-accent: #08101f;
+  --color-primary: #4a8bf7;
+  --color-primary-hover: #86b2fa;
+  --color-primary-foreground: #08101f;
+  --color-success: #10b981;
+  --color-info: #22b8d6;
+  --color-warning: #f59e0b;
+  --color-danger: #f2555a;
+  --color-danger-foreground: #08101f;
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.32);
+  --shadow-elevated: 0 6px 20px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+html,
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* O tema já é conhecido no servidor, então os controles nativos (scrollbar,
+   autofill, date picker) acompanham sem flash. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 999px;
+  border: 2px solid var(--color-background);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted);
+}
+
+@layer utilities {
+  .card {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+  }
+  .card-hover {
+    transition: box-shadow 0.15s, transform 0.15s;
+  }
+  .card-hover:hover {
+    box-shadow: var(--shadow-elevated);
+  }
+
+  /* Chat flutuante: entrada suave do modal e do backdrop */
+  .dock-backdrop {
+    animation: dockFade 0.16s ease-out;
+  }
+  .dock-pop {
+    animation: dockPop 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    transform-origin: bottom right;
+  }
+  /* Gaveta lateral: entra da borda, não do centro. */
+  .drawer-in {
+    animation: drawerIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+@keyframes drawerIn {
+  from {
+    transform: translateX(16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes dockFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes dockPop {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Balão "digitando" do chat: três pontinhos pulsando */
+.typing-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: var(--color-muted-2);
+  animation: typing-blink 1.2s infinite ease-in-out;
+}
+.typing-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.typing-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes typing-blink {
+  0%,
+  60%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+/* ---- Movimento reduzido ----
+   Não é um kill global: cada animação ganha uma alternativa que preserva a
+   informação. Spinner continua girando (é o sinal de "carregando"), só mais
+   devagar; skeleton e "digitando" trocam pulso por opacidade fixa; entradas
+   viram corte seco. */
+@media (prefers-reduced-motion: reduce) {
+  .dock-backdrop,
+  .dock-pop,
+  .drawer-in {
+    animation: none;
+  }
+  .typing-dot {
+    animation: none;
+    opacity: 0.6;
+  }
+  .animate-spin {
+    animation-duration: 1.8s;
+  }
+  .animate-pulse {
+    animation: none;
+    opacity: 0.65;
+  }
+  .card-hover {
+    transition: none;
+  }
+}
