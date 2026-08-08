@@ -19,7 +19,8 @@ loadEnvLocal();
 
 const url = process.env.DATABASE_URL;
 if (!url) {
-  console.error("DATABASE_URL not set in .env.local");
+  console.error("DATABASE_URL not set (add to Vercel Settings → Environment Variables)");
+  console.log("Available env vars:", Object.keys(process.env).filter(k => k.includes("DB") || k.includes("SUPABASE")));
   process.exit(1);
 }
 
