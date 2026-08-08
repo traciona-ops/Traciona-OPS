@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { scheduleJob } from "@/lib/jobs";
 
 // Dispatcher: initializes jobs and delegates to /api/jobs/poll
 // Called by pg_cron every minute with header x-cron-secret
