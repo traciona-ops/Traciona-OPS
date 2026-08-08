@@ -16,7 +16,6 @@ import {
   type MediaKind,
 } from "@/lib/whatsapp/dinastia";
 import { resolveLeadNumber } from "@/lib/whatsapp/numbers";
-import { selectLead } from "@/lib/queries";
 import { SECTOR } from "@/lib/types";
 
 export async function sendWhatsappMessage(

@@ -4,9 +4,6 @@ import { Redis } from "@upstash/redis";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { onlyDigits } from "@/lib/whatsapp/dinastia";
 import { isPhoneLikeName } from "@/lib/whatsapp/names";
-import { enqueue } from "@/lib/queue";
-import { logger } from "@/lib/logger";
-import { checkWebhookPhoneLimit } from "@/lib/rate-limit";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // =================== Webhook Payload Validation (Zod Schema) ===================

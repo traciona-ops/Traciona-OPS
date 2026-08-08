@@ -4,7 +4,6 @@
 // Circuit breaker: failureThreshold=5, timeout=60s → previne cascata de falhas.
 
 import { getIntegrationSecret } from "@/lib/integrations";
-import { withCircuitBreaker } from "@/lib/circuit-breaker";
 
 const API = "https://api.autentique.com.br/v2/graphql";
 

@@ -4,7 +4,6 @@
 // Circuit breaker: failureThreshold=5, timeout=60s → previne cascata de falhas.
 
 import { getIntegrationSecret } from "@/lib/integrations";
-import { withCircuitBreaker } from "@/lib/circuit-breaker";
 
 // chave: Configurações → Integrações (banco) primeiro; .env de reserva
 async function creds(): Promise<{ key?: string; base: string }> {

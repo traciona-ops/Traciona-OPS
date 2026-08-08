@@ -2,7 +2,6 @@
 // Auth: header `token`. Endpoints na raiz da base URL.
 // Circuit breaker: failureThreshold=5, timeout=60s → previne cascata de falhas.
 
-import { withCircuitBreaker } from "@/lib/circuit-breaker";
 
 const BASE = process.env.WHATSAPP_API_URL;
 const TOKEN = process.env.WHATSAPP_API_TOKEN;

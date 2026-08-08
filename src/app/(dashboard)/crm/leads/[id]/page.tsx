@@ -3,7 +3,6 @@ import { Topbar } from "@/components/topbar";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { requireModule } from "@/lib/access";
-import { selectLead } from "@/lib/queries";
 import { LeadDetail } from "@/components/crm/lead-detail";
 import type {
   Lead,

@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { can, NOT_ALLOWED } from "@/lib/permissions";
 import { slugify } from "@/lib/slug";
-import { selectLead } from "@/lib/queries";
 import type {
   LeadSource,
   UserRole,
