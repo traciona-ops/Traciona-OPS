@@ -4,11 +4,9 @@ export type JobHandler = (
   admin: SupabaseClient
 ) => Promise<{ success: boolean; message?: string }>;
 
-/**
- * Parse cron expression and calculate next run time.
- * Supports: "*/5 * * * *" (every 5 min), "0 * * * *" (hourly), etc.
- * Format: minute hour day month weekday
- */
+// Parse cron expression and calculate next run time.
+// Supports: "0/5 * * * *" (every 5 min), "0 * * * *" (hourly)
+// Format: minute hour day month weekday
 function getNextRunTime(cronExpr: string, fromDate = new Date()): Date {
   const parts = cronExpr.trim().split(/\s+/);
   if (parts.length !== 5) {
