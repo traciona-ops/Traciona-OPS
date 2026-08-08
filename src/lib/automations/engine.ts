@@ -82,7 +82,8 @@ async function claimRun(
 async function actionMoveStage(
   admin: Admin,
   lead: LeadRow,
-  a: AutomationRow
+  a: AutomationRow,
+  msgId?: string | null
 ): Promise<boolean> {
   if (!a.to_stage_id || lead.stage_id === a.to_stage_id) return false;
 
@@ -113,10 +114,22 @@ async function actionMoveStage(
     .eq("id", lead.id);
   if (error) return false;
 
+  // Idempotency: check if note for this msgId already exists
+  if (msgId) {
+    const { data: existing } = await admin
+      .from("lead_notes")
+      .select("id")
+      .eq("lead_id", lead.id)
+      .like("content", `%${msgId}%`)
+      .limit(1)
+      .maybeSingle();
+    if (existing) return true; // Already noted, skip insert
+  }
+
   await admin.from("lead_notes").insert({
     lead_id: lead.id,
     author_id: null,
-    content: `Automação${a.name ? ` "${a.name}"` : ""}: card movido para "${dest.name}".`,
+    content: `Automação${a.name ? ` "${a.name}"` : ""}: card movido para "${dest.name}".${msgId ? ` [${msgId}]` : ""}`,
   });
   return true;
 }
@@ -128,7 +141,8 @@ async function actionMoveStage(
 async function actionSendMessage(
   admin: Admin,
   lead: LeadRow,
-  a: AutomationRow
+  a: AutomationRow,
+  msgId?: string | null
 ): Promise<boolean> {
   if (!a.message_body?.trim()) return false;
 
@@ -158,10 +172,22 @@ async function actionSendMessage(
   });
   if (error) return false;
 
+  // Idempotency: check if note for this msgId already exists
+  if (msgId) {
+    const { data: existing } = await admin
+      .from("lead_notes")
+      .select("id")
+      .eq("lead_id", lead.id)
+      .like("content", `%${msgId}%`)
+      .limit(1)
+      .maybeSingle();
+    if (existing) return true; // Already noted, skip insert
+  }
+
   await admin.from("lead_notes").insert({
     lead_id: lead.id,
     author_id: null,
-    content: `Automação${a.name ? ` "${a.name}"` : ""}: mensagem automática programada.`,
+    content: `Automação${a.name ? ` "${a.name}"` : ""}: mensagem automática programada.${msgId ? ` [${msgId}]` : ""}`,
   });
   return true;
 }
@@ -169,19 +195,22 @@ async function actionSendMessage(
 async function applyAutomation(
   admin: Admin,
   lead: LeadRow,
-  a: AutomationRow
+  a: AutomationRow,
+  msgId?: string | null
 ): Promise<boolean> {
-  if (a.action === "send_message") return actionSendMessage(admin, lead, a);
-  if (a.action === "move_stage") return actionMoveStage(admin, lead, a);
+  if (a.action === "send_message") return actionSendMessage(admin, lead, a, msgId);
+  if (a.action === "move_stage") return actionMoveStage(admin, lead, a, msgId);
   return false;
 }
 
 /**
  * Gatilho de EVENTO: chamado quando chega mensagem do cliente (in).
+ * msgId: opcional, para rastreabilidade e idempotência em lead_notes.
  */
 export async function runReplyAutomations(
   admin: Admin,
-  leadId: string
+  leadId: string,
+  msgId?: string | null
 ): Promise<void> {
   const { data: lead } = await admin
     .from("leads")
@@ -200,7 +229,7 @@ export async function runReplyAutomations(
     );
 
   for (const a of (autos ?? []) as AutomationRow[]) {
-    const acted = await applyAutomation(admin, lead as LeadRow, a);
+    const acted = await applyAutomation(admin, lead as LeadRow, a, msgId);
     if (acted && a.action === "move_stage") break; // etapa mudou; para
   }
 }

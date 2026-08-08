@@ -3,6 +3,7 @@ import { Topbar } from "@/components/topbar";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { requireModule } from "@/lib/access";
+import { selectLead } from "@/lib/queries";
 import { LeadDetail } from "@/components/crm/lead-detail";
 import type {
   Lead,
@@ -26,7 +27,7 @@ export async function generateMetadata({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-  const q = supabase.from("leads").select("name");
+  const q = supabase.from("leads").select(selectLead('basic'));
   const { data } = await (isCodeParam(id)
     ? q.eq("code", Number(id))
     : q.eq("id", id)

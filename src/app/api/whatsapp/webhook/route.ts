@@ -1,27 +1,115 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
+import { Redis } from "@upstash/redis";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { onlyDigits, downloadMedia } from "@/lib/whatsapp/dinastia";
-import { runReplyAutomations } from "@/lib/automations/engine";
-import { ensureLeadAvatar, type AvatarLead } from "@/lib/whatsapp/avatar";
+import { onlyDigits } from "@/lib/whatsapp/dinastia";
 import { isPhoneLikeName } from "@/lib/whatsapp/names";
+import { enqueue } from "@/lib/queue";
+import { logger } from "@/lib/logger";
+import { checkWebhookPhoneLimit } from "@/lib/rate-limit";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-// Configurações do número (org_settings.chat) com cache de 60s — o webhook
-// roda a cada mensagem, não precisa bater no banco toda vez.
-let settingsCache: { at: number; autoCard: boolean } = { at: 0, autoCard: false };
+// =================== Webhook Payload Validation (Zod Schema) ===================
+// Valida o payload de DinastiAPI (wuzapi) antes de processar.
+// Suporta múltiplos formatos: JSON puro, form-encoded, eventos aninhados.
+
+const WebhookPayloadSchema = z.object({
+  data: z
+    .object({
+      type: z.string().optional(),
+      event: z.record(z.unknown()).optional(),
+      state: z.string().optional(),
+    })
+    .optional(),
+  type: z.string().optional(),
+  event: z.record(z.unknown()).optional(),
+  eventType: z.string().optional(),
+  pushName: z.string().optional(),
+}).catchall(z.unknown());
+
+type WebhookPayload = z.infer<typeof WebhookPayloadSchema>;
+
+function validateWebhookPayload(payload: unknown): {
+  valid: boolean;
+  data: WebhookPayload | null;
+  error: string | null;
+} {
+  try {
+    const validated = WebhookPayloadSchema.parse(payload);
+    return { valid: true, data: validated, error: null };
+  } catch (err) {
+    const errorMsg =
+      err instanceof z.ZodError
+        ? `Validation error: ${err.errors.map((e) => `${e.path.join(".")}: ${e.message}`).join("; ")}`
+        : `Invalid payload: ${err instanceof Error ? err.message : "unknown error"}`;
+    return { valid: false, data: null, error: errorMsg };
+  }
+}
+
+// =================== Resilience Helpers ===================
+/**
+ * Retry with exponential backoff (1s, 2s, 4s max), max 3 attempts, 5s timeout per attempt.
+ * Throws on all failures; caller decides whether to 500 or continue.
+ */
+async function retry<T>(
+  fn: () => Promise<T>,
+  maxAttempts: number = 3,
+  timeoutMs: number = 5000
+): Promise<T> {
+  let lastErr: Error | null = null;
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      return await Promise.race([
+        fn(),
+        new Promise<T>((_, rej) =>
+          setTimeout(() => rej(new Error("timeout")), timeoutMs)
+        ),
+      ]);
+    } catch (e) {
+      lastErr = e instanceof Error ? e : new Error(String(e));
+      if (i < maxAttempts - 1) {
+        const delayMs = Math.min(1000 * Math.pow(2, i), 5000);
+        await new Promise((res) => setTimeout(res, delayMs));
+      }
+    }
+  }
+  throw lastErr || new Error("retry exhausted");
+}
+
+// Upstash Redis para cache org_settings.chat (1h TTL)
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN,
+});
+
 async function autoCreateCardEnabled(admin: SupabaseClient): Promise<boolean> {
-  if (Date.now() - settingsCache.at < 60_000) return settingsCache.autoCard;
+  try {
+    // Tenta Redis primeiro
+    const cached = await redis.get<boolean>("org:chat:settings");
+    if (cached !== null) return cached;
+  } catch (err) {
+    // Redis indisponível → passa adiante pro DB
+    logger.warn("[WH] redis.get falhou", { error: (err as Error).message });
+  }
+
+  // Cache miss → busca do banco
   const { data } = await admin
     .from("org_settings")
     .select("value")
     .eq("key", "chat")
     .maybeSingle();
-  settingsCache = {
-    at: Date.now(),
-    autoCard: !!(data?.value as { auto_create_card?: boolean } | null)
-      ?.auto_create_card,
-  };
-  return settingsCache.autoCard;
+  const autoCard = !!(data?.value as { auto_create_card?: boolean } | null)
+    ?.auto_create_card;
+
+  // Persiste no Redis por 1h (3600s)
+  try {
+    await redis.setex("org:chat:settings", 3600, autoCard);
+  } catch (err) {
+    // falha em Redis não derruba o webhook
+    logger.warn("[WH] redis.setex falhou", { error: (err as Error).message });
+  }
+
+  return autoCard;
 }
 
 /** Coloca o lead no topo da 1ª etapa do funil padrão (nunca CS). */
@@ -35,22 +123,15 @@ async function placeInDefaultPipeline(admin: SupabaseClient, leadId: string) {
 
   const { data: pipeline } = await admin
     .from("pipelines")
-    .select("id")
+    .select("id, pipeline_stages(*)")
     .eq("archived", false)
     .eq("is_cs", false)
     .order("is_default", { ascending: false })
     .order("position")
     .limit(1)
     .maybeSingle();
-  if (!pipeline) return;
-  const { data: stage } = await admin
-    .from("pipeline_stages")
-    .select("id")
-    .eq("pipeline_id", pipeline.id)
-    .order("position")
-    .limit(1)
-    .maybeSingle();
-  if (!stage) return;
+  if (!pipeline || !pipeline.pipeline_stages?.length) return;
+  const stage = pipeline.pipeline_stages[0];
   const { data: top } = await admin
     .from("leads")
     .select("position")
@@ -74,12 +155,18 @@ async function placeInDefaultPipeline(admin: SupabaseClient, leadId: string) {
 // Aceita JSON e form-encoded (campo jsonData), que é o padrão wuzapi.
 
 export async function POST(req: Request) {
+  const startTime = Date.now();
   const url = new URL(req.url);
   const secret = process.env.WHATSAPP_WEBHOOK_SECRET;
   // Fail-closed: sem secret configurado OU secret errado → 401.
   const provided =
     url.searchParams.get("secret") || req.headers.get("x-webhook-secret");
   if (!secret || provided !== secret) {
+    logger.warn("webhook_auth_failed", {
+      provided: !!provided,
+      configured: !!secret,
+      durationMs: Date.now() - startTime,
+    });
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
@@ -97,7 +184,7 @@ export async function POST(req: Request) {
   }
 
   // Extrai o payload JSON, seja JSON puro ou form-encoded (jsonData)
-  let payload: Record<string, any> = {};
+  let rawPayload: unknown = {};
   const tryParse = (s: string) => {
     try {
       return JSON.parse(s);
@@ -106,12 +193,27 @@ export async function POST(req: Request) {
     }
   };
   if (ct.includes("application/json")) {
-    payload = tryParse(raw) ?? {};
+    rawPayload = tryParse(raw) ?? {};
   } else {
     const params = new URLSearchParams(raw);
     const jd = params.get("jsonData") || params.get("data") || params.get("body");
-    payload = (jd && tryParse(jd)) || tryParse(raw) || {};
+    rawPayload = (jd && tryParse(jd)) || tryParse(raw) || {};
   }
+
+  // Valida o payload contra o schema Zod (protege contra mudanças de formato)
+  const validation = validateWebhookPayload(rawPayload);
+  if (!validation.valid) {
+    logger.warn("webhook_validation_failed", {
+      error: validation.error,
+      durationMs: Date.now() - startTime,
+    });
+    return NextResponse.json(
+      { ok: false, error: validation.error },
+      { status: 400 }
+    );
+  }
+
+  const payload = validation.data as WebhookPayload;
 
   // DinastiAPI: evento em payload.data.event (fallback p/ payload.event)
   const event: Record<string, any> =
@@ -306,6 +408,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, ignored: "no-real-phone" });
   }
 
+  // Rate limit: 100 messages per phone per minute (spam check)
+  const phoneLimit = await checkWebhookPhoneLimit(phone);
+  if (!phoneLimit.allowed) {
+    logger.warn("webhook_phone_rate_limit_exceeded", {
+      phone: phone.slice(-4),
+      retryAfter: phoneLimit.retryAfter,
+    });
+    return NextResponse.json(
+      { ok: false, error: "rate limit exceeded" },
+      { status: 429, headers: { "Retry-After": String(phoneLimit.retryAfter) } }
+    );
+  }
+
   // Mensagens enviadas pelo celular vêm aninhadas em deviceSentMessage/ephemeral.
   let mc: Record<string, any> = msg;
   if (mc.deviceSentMessage?.message) mc = mc.deviceSentMessage.message;
@@ -385,12 +500,24 @@ export async function POST(req: Request) {
     : String(
         info.PushName ?? (payload as { pushName?: string })?.pushName ?? ""
       ).trim();
-  const { data: leadId, error: rpcErr } = await admin.rpc(
-    "wa_find_or_create_lead",
-    { p_phone: phone, p_name: pushName, p_sector: "vendas" }
-  );
-  if (rpcErr || !leadId) {
-    console.log("[WH] find_or_create lead falhou:", rpcErr?.message);
+  let leadId: string | null = null;
+  try {
+    const { data, error: rpcErr } = await retry(() =>
+      admin.rpc("wa_find_or_create_lead", {
+        p_phone: phone,
+        p_name: pushName,
+        p_sector: "vendas",
+      })
+    );
+    leadId = data;
+    if (rpcErr || !leadId) {
+      throw new Error(rpcErr?.message || "no leadId");
+    }
+  } catch (e) {
+    logger.error("[WH] find_or_create lead exhausted retries", {
+      error: (e as Error).message,
+      phone,
+    });
     return NextResponse.json({ ok: true, ignored: "lead-resolve-failed" });
   }
 
@@ -425,25 +552,24 @@ export async function POST(req: Request) {
     }
   }
 
-  // Mídia recebida: baixa e sobe no Storage
+  // Mídia recebida: enfileira download + upload para processamento async
   let media_url: string | null = null;
   let media_type: string | null = null;
   if (mediaKind && node) {
-    const dl = await downloadMedia(mediaKind, node);
-    if (dl) {
-      const ext = (dl.mime.split("/")[1] || "bin").split(";")[0];
-      const dir = fromMe ? "out" : "in";
-      const path = `${leadId}/${dir}-${Date.now()}.${ext}`;
-      const { error: upErr } = await admin.storage
-        .from("whatsapp-media")
-        .upload(path, dl.buffer, { contentType: dl.mime });
-      if (!upErr) {
-        media_url = admin.storage.from("whatsapp-media").getPublicUrl(path)
-          .data.publicUrl;
-        media_type = mediaKind;
-      } else {
-        console.log("[WH] upload erro:", upErr.message);
-      }
+    media_type = mediaKind;
+    try {
+      await enqueue("download_media", {
+        leadId,
+        mediaKind,
+        node,
+        direction: fromMe ? "out" : "in",
+      });
+      logger.info("[WH] media download enqueued", { leadId, mediaKind });
+    } catch (e) {
+      logger.error("[WH] media enqueue failed", {
+        error: (e as Error).message,
+        leadId,
+      });
     }
   }
 
@@ -487,23 +613,40 @@ export async function POST(req: Request) {
   }
 
   // fromMe = você respondeu pelo celular → registra como saída (echo).
-  const { error: insErr } = await admin.from("whatsapp_messages").insert({
-    lead_id: leadId,
-    number_id: numberId,
-    reply_to_body,
-    reply_to_dir,
-    direction: fromMe ? "out" : "in",
-    body,
-    media_url,
-    media_type,
-    status: fromMe ? "sent" : "received",
-    provider: "dinastia",
-    provider_msg_id: msgId,
-  });
-  if (insErr && insErr.code !== "23505") {
+  // Armazena msgId cedo para idempotência (vai no whatsapp_messages + side effects).
+  let insertErr: any = null;
+  try {
+    const { error: insErr } = await retry(
+      () =>
+        admin.from("whatsapp_messages").insert({
+          lead_id: leadId,
+          number_id: numberId,
+          reply_to_body,
+          reply_to_dir,
+          direction: fromMe ? "out" : "in",
+          body,
+          media_url,
+          media_type,
+          status: fromMe ? "sent" : "received",
+          provider: "dinastia",
+          provider_msg_id: msgId,
+        }),
+      3,
+      5000
+    );
+    insertErr = insErr;
+  } catch (e) {
+    logger.error("[WH] message insert retry exhausted", {
+      error: (e as Error).message,
+      msgId,
+    });
+    insertErr = new Error("retry exhausted");
+  }
+
+  if (insertErr && insertErr.code !== "23505") {
     // falha real de gravação → 500 pro wuzapi reentregar (senão a mensagem
     // do cliente se perde sem rastro)
-    console.log("[WH][ERR] insert mensagem falhou:", insErr.message);
+    logger.error("[WH] insert mensagem falhou", { error: insertErr.message });
     return NextResponse.json(
       { ok: false, error: "insert-failed" },
       { status: 500 }
@@ -525,27 +668,31 @@ export async function POST(req: Request) {
     // nunca derruba a ingestão
   }
 
-  // Foto de perfil: puxa na hora pra lead novo/sem foto (e revisa semanalmente).
+  // Foto de perfil: enfileira para sincronização async.
   // O frescor interno evita chamar a instância a cada mensagem.
   try {
-    const { data: avLead } = await admin
-      .from("leads")
-      .select("id, phone, avatar_url, avatar_id, avatar_checked_at")
-      .eq("id", leadId)
-      .maybeSingle();
-    if (avLead) await ensureLeadAvatar(admin, avLead as AvatarLead);
-  } catch {
-    // foto nunca pode derrubar a ingestão da mensagem
+    await enqueue("avatar_sync", { leadId });
+    logger.info("[WH] avatar sync enqueued", { leadId });
+  } catch (e) {
+    logger.error("[WH] avatar enqueue failed", {
+      error: (e as Error).message,
+      leadId,
+    });
   }
 
   // Automação por evento: só quando o CLIENTE responde (não no echo do próprio
-  // celular). Move o card se houver regra 'reply_received' na etapa. Blindado:
-  // nunca deixa a automação derrubar a ingestão da mensagem.
+  // celular). Move o card se houver regra 'reply_received' na etapa.
+  // Enfileira para processamento async para desacoplar do webhook.
+  // Passa msgId para idempotência em lead_notes.
   if (!fromMe) {
     try {
-      await runReplyAutomations(admin, leadId as string);
+      await enqueue("reply_automations", { leadId, msgId });
+      logger.info("[WH] reply automations enqueued", { leadId, msgId });
     } catch (e) {
-      console.log("[WH] automação de resposta falhou:", (e as Error).message);
+      logger.error("[WH] automations enqueue failed", {
+        error: (e as Error).message,
+        leadId,
+      });
     }
   }
 

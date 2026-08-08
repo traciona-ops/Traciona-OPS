@@ -1,8 +1,10 @@
 // Integração Asaas (cobranças e assinaturas) — API REST v3.
 // Docs: docs.asaas.com. Auth: header `access_token`.
 // Sandbox por padrão (não gera cobrança real) — produção via ASAAS_API_URL.
+// Circuit breaker: failureThreshold=5, timeout=60s → previne cascata de falhas.
 
 import { getIntegrationSecret } from "@/lib/integrations";
+import { withCircuitBreaker } from "@/lib/circuit-breaker";
 
 // chave: Configurações → Integrações (banco) primeiro; .env de reserva
 async function creds(): Promise<{ key?: string; base: string }> {
@@ -29,22 +31,30 @@ async function req<T>(
   const { key: KEY, base: BASE } = await creds();
   if (!KEY) return { error: "Asaas não configurado (ASAAS_API_KEY)." };
   try {
-    const res = await fetch(`${BASE}${path}`, {
-      method,
-      headers: {
-        access_token: KEY,
-        "Content-Type": "application/json",
+    const result = await withCircuitBreaker(
+      "asaas",
+      async () => {
+        const res = await fetch(`${BASE}${path}`, {
+          method,
+          headers: {
+            access_token: KEY,
+            "Content-Type": "application/json",
+          },
+          body: body ? JSON.stringify(body) : undefined,
+          signal: AbortSignal.timeout(20000),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const desc =
+            json?.errors?.[0]?.description ?? `Asaas HTTP ${res.status}`;
+          throw new Error(String(desc));
+        }
+        return json as T;
       },
-      body: body ? JSON.stringify(body) : undefined,
-      signal: AbortSignal.timeout(20000),
-    });
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      const desc =
-        json?.errors?.[0]?.description ?? `Asaas HTTP ${res.status}`;
-      return { error: String(desc) };
-    }
-    return { data: json as T };
+      5,
+      60000
+    );
+    return { data: result };
   } catch (e) {
     return { error: (e as Error).message };
   }

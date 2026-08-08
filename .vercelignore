@@ -1,0 +1,4 @@
+supabase/migrations/
+.claude/
+.git/
+node_modules/

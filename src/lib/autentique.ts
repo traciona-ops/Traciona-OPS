@@ -1,8 +1,10 @@
 // Integração Autentique (assinatura digital) — API GraphQL v2.
 // Docs: docs.autentique.com.br/api. Rate limit: 60 req/min.
 // O token NUNCA sai do servidor (env AUTENTIQUE_TOKEN).
+// Circuit breaker: failureThreshold=5, timeout=60s → previne cascata de falhas.
 
 import { getIntegrationSecret } from "@/lib/integrations";
+import { withCircuitBreaker } from "@/lib/circuit-breaker";
 
 const API = "https://api.autentique.com.br/v2/graphql";
 
@@ -22,21 +24,30 @@ async function gql<T>(
 ): Promise<{ data?: T; error?: string }> {
   const TOKEN = await getToken();
   if (!TOKEN) return { error: "Autentique não configurada (AUTENTIQUE_TOKEN)." };
+
   try {
-    const res = await fetch(API, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${TOKEN}`,
-        "Content-Type": "application/json",
+    const result = await withCircuitBreaker(
+      "autentique",
+      async () => {
+        const res = await fetch(API, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${TOKEN}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ query, variables }),
+          signal: AbortSignal.timeout(20000),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (json?.errors?.length)
+          throw new Error(String(json.errors[0]?.message ?? "Erro na Autentique."));
+        if (!res.ok) throw new Error(`Autentique HTTP ${res.status}`);
+        return { data: json?.data as T };
       },
-      body: JSON.stringify({ query, variables }),
-      signal: AbortSignal.timeout(20000),
-    });
-    const json = await res.json().catch(() => ({}));
-    if (json?.errors?.length)
-      return { error: String(json.errors[0]?.message ?? "Erro na Autentique.") };
-    if (!res.ok) return { error: `Autentique HTTP ${res.status}` };
-    return { data: json?.data as T };
+      5, // failureThreshold
+      60000 // timeout 60s
+    );
+    return result;
   } catch (e) {
     return { error: (e as Error).message };
   }
@@ -109,22 +120,30 @@ export async function createSignatureDocument(input: {
   );
 
   try {
-    const res = await fetch(API, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${TOKEN}` },
-      body: form,
-      signal: AbortSignal.timeout(60000),
-    });
-    const json = await res.json().catch(() => ({}));
-    if (json?.errors?.length)
-      return { error: String(json.errors[0]?.message ?? "Erro na Autentique.") };
-    const doc = json?.data?.createDocument;
-    if (!doc?.id) return { error: `Autentique não criou o documento (HTTP ${res.status}).` };
-    const link =
-      doc.signatures?.find(
-        (s: { link?: { short_link?: string } }) => s?.link?.short_link
-      )?.link?.short_link ?? null;
-    return { doc: { id: String(doc.id), signLink: link } };
+    const result = await withCircuitBreaker(
+      "autentique",
+      async () => {
+        const res = await fetch(API, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${TOKEN}` },
+          body: form,
+          signal: AbortSignal.timeout(60000),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (json?.errors?.length)
+          throw new Error(String(json.errors[0]?.message ?? "Erro na Autentique."));
+        const doc = json?.data?.createDocument;
+        if (!doc?.id) throw new Error(`Autentique não criou o documento (HTTP ${res.status}).`);
+        const link =
+          doc.signatures?.find(
+            (s: { link?: { short_link?: string } }) => s?.link?.short_link
+          )?.link?.short_link ?? null;
+        return { doc: { id: String(doc.id), signLink: link } };
+      },
+      5,
+      60000
+    );
+    return result;
   } catch (e) {
     return { error: (e as Error).message };
   }

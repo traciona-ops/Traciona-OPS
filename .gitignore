@@ -5,3 +5,7 @@ node_modules/
 graphify-out/
 .vercel/
 *.log
+playwright-report/
+test-results/
+.auth/
+.claude/settings.json.graphify-bak

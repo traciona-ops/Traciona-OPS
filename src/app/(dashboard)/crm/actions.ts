@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { can, NOT_ALLOWED } from "@/lib/permissions";
 import { slugify } from "@/lib/slug";
+import { selectLead } from "@/lib/queries";
 import type {
   LeadSource,
   UserRole,
@@ -146,7 +147,7 @@ export async function attachLeadToPipeline(leadId: string) {
 
   const { data: lead } = await supabase
     .from("leads")
-    .select("id, pipeline_id")
+    .select(selectLead('basic'))
     .eq("id", leadId)
     .maybeSingle();
   if (!lead) return { error: "Contato não encontrado." };

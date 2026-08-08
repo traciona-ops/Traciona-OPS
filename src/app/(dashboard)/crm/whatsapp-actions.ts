@@ -16,6 +16,7 @@ import {
   type MediaKind,
 } from "@/lib/whatsapp/dinastia";
 import { resolveLeadNumber } from "@/lib/whatsapp/numbers";
+import { selectLead } from "@/lib/queries";
 import { SECTOR } from "@/lib/types";
 
 export async function sendWhatsappMessage(
@@ -37,7 +38,7 @@ export async function sendWhatsappMessage(
 
   const { data: lead } = await supabase
     .from("leads")
-    .select("id, phone")
+    .select(selectLead('basic'))
     .eq("id", leadId)
     .single();
 
@@ -118,7 +119,7 @@ export async function sendWhatsappMedia(formData: FormData) {
   } = await supabase.auth.getUser();
   const { data: lead } = await supabase
     .from("leads")
-    .select("id, phone")
+    .select(selectLead('basic'))
     .eq("id", leadId)
     .single();
   if (!lead?.phone) return { error: "Lead sem telefone." };
@@ -215,7 +216,7 @@ export async function scheduleMessage(
 
   const { data: lead } = await supabase
     .from("leads")
-    .select("id, phone")
+    .select(selectLead('basic'))
     .eq("id", leadId)
     .single();
   if (!lead?.phone) return { error: "Lead sem telefone." };
