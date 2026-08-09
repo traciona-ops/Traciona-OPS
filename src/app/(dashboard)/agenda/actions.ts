@@ -2,7 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { pushMeetingToGoogle, removeMeetingFromGoogle } from "@/lib/meeting-sync";
+import {
+  pushMeetingToGoogle,
+  removeMeetingFromGoogle,
+  withLeadName,
+} from "@/lib/meeting-sync";
 
 export async function createMeeting(data: {
   title: string;
@@ -24,11 +28,23 @@ export async function createMeeting(data: {
     ? new Date(data.ends_at)
     : new Date(startDate.getTime() + 60 * 60 * 1000);
 
+  // Com cliente escolhido, o nome entra no fim do título ("Call - Marx Solar"),
+  // pra reunião ser reconhecível na Agenda e no Google.
+  let title = data.title.trim();
+  if (data.lead_id) {
+    const { data: lead } = await supabase
+      .from("leads")
+      .select("name")
+      .eq("id", data.lead_id)
+      .maybeSingle();
+    title = withLeadName(title, lead?.name);
+  }
+
   // Create meeting in DB
   const { data: meeting, error } = await supabase
     .from("meetings")
     .insert({
-      title: data.title,
+      title,
       description: data.description,
       starts_at: startDate.toISOString(),
       ends_at: endDate.toISOString(),
@@ -42,7 +58,7 @@ export async function createMeeting(data: {
   if (!meeting) throw new Error("Failed to create meeting");
 
   const syncError = await pushMeetingToGoogle(supabase, user.id, meeting.id, {
-    title: data.title,
+    title,
     description: data.description,
     startsAt: startDate,
     endsAt: endDate,
