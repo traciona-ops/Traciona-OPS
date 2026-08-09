@@ -1754,14 +1754,11 @@ export function LeadPanel({
   context,
   currentUserId,
   onChanged,
-  hideStage = false,
 }: {
   context: LeadContext;
   currentUserId: string;
   /** Chamado após cada mutação (o dock usa pra re-buscar o contexto). */
   onChanged?: () => void | Promise<void>;
-  /** No chat flutuante a etapa não aparece (gestão de funil fica no kanban). */
-  hideStage?: boolean;
 }) {
   const router = useRouter();
   const role = useRole();
@@ -1826,7 +1823,7 @@ export function LeadPanel({
         )}
 
         {/* Etapa */}
-        <div className={hideStage || !lead.pipeline_id ? "hidden" : undefined}>
+        <div className={!lead.pipeline_id ? "hidden" : undefined}>
           <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-[var(--color-muted-2)]">
             Etapa
           </label>

@@ -1909,7 +1909,6 @@ export function ChatWorkspace({
                     await loadContext(selected.lead_id);
                     loadConvs();
                   }}
-                  hideStage
                 />
               </div>
             )}
