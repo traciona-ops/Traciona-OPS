@@ -81,6 +81,7 @@ import {
   deleteMeeting,
   addLeadToPipeline,
 } from "@/app/(dashboard)/crm/actions";
+import { toast } from "@/components/ui/toast";
 import {
   SOURCE_LABEL,
   type WhatsappMessage,
@@ -2100,13 +2101,18 @@ export function LeadPanel({
                 size="sm"
                 disabled={busy || !meetTitle.trim() || !meetWhen}
                 onClick={() => {
-                  run(() =>
-                    createMeeting({
+                  run(async () => {
+                    const r = await createMeeting({
                       leadId: lead.id,
                       title: meetTitle.trim(),
                       startsAt: new Date(meetWhen).toISOString(),
-                    })
-                  );
+                    });
+                    if (r?.error) toast(r.error, { type: "error" });
+                    else if (r?.syncError)
+                      toast(`Reunião criada, mas não foi pro Google: ${r.syncError}`, {
+                        type: "error",
+                      });
+                  });
                   setMeetTitle("");
                   setMeetWhen("");
                 }}

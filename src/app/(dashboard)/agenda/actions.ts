@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { createCalendarEvent } from "@/lib/google-calendar";
+import { pushMeetingToGoogle, removeMeetingFromGoogle } from "@/lib/meeting-sync";
 
 export async function createMeeting(data: {
   title: string;
@@ -41,46 +41,12 @@ export async function createMeeting(data: {
   if (error) throw error;
   if (!meeting) throw new Error("Failed to create meeting");
 
-  // Sincroniza no Google. Falhar aqui não desfaz a reunião, mas o erro volta pra UI.
-  let syncError: string | null = null;
-  try {
-    const { data: integration } = await supabase
-      .from("calendar_integrations")
-      .select("*")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (!integration?.google_refresh_token || !integration.google_calendar_id) {
-      syncError = "Google Calendar não está conectado.";
-    } else {
-      const googleEvent = await createCalendarEvent(
-        integration.google_refresh_token,
-        integration.google_calendar_id,
-        {
-          summary: data.title,
-          description: data.description,
-          startTime: startDate,
-          endTime: endDate,
-          generateMeetLink: true,
-        }
-      );
-
-      if (googleEvent.id) {
-        await supabase
-          .from("meetings")
-          .update({
-            google_event_ids: { personal: googleEvent.id },
-            synced_to_google_at: new Date().toISOString(),
-          })
-          .eq("id", meeting.id);
-      } else {
-        syncError = "Google não devolveu o ID do evento.";
-      }
-    }
-  } catch (err) {
-    console.error("Failed to sync to Google Calendar:", err);
-    syncError = err instanceof Error ? err.message : "Erro desconhecido no Google Calendar.";
-  }
+  const syncError = await pushMeetingToGoogle(supabase, user.id, meeting.id, {
+    title: data.title,
+    description: data.description,
+    startsAt: startDate,
+    endsAt: endDate,
+  });
 
   revalidatePath("/agenda");
   return { ...meeting, syncError };
@@ -167,29 +133,11 @@ export async function deleteMeeting(id: string) {
 
   if (!meeting) throw new Error("Meeting not found");
 
-  // Delete from Google Calendar
-  try {
-    const { data: integration } = await supabase
-      .from("calendar_integrations")
-      .select("*")
-      .eq("user_id", user.id)
-      .single();
-
-    if (
-      integration?.google_refresh_token &&
-      meeting.google_event_ids?.personal
-    ) {
-      const { deleteCalendarEvent } = await import("@/lib/google-calendar");
-
-      await deleteCalendarEvent(
-        integration.google_refresh_token,
-        integration.google_calendar_id,
-        meeting.google_event_ids.personal
-      );
-    }
-  } catch (syncError) {
-    console.error("Failed to delete from Google Calendar:", syncError);
-  }
+  await removeMeetingFromGoogle(
+    supabase,
+    user.id,
+    meeting.google_event_ids?.personal
+  );
 
   // Delete from DB
   const { error } = await supabase.from("meetings").delete().eq("id", id);

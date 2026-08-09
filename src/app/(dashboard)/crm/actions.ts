@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { can, NOT_ALLOWED } from "@/lib/permissions";
 import { slugify } from "@/lib/slug";
+import { pushMeetingToGoogle, removeMeetingFromGoogle } from "@/lib/meeting-sync";
 import type {
   LeadSource,
   UserRole,
@@ -501,23 +502,54 @@ export async function createMeeting(input: {
     input.endsAt ||
     new Date(new Date(input.startsAt).getTime() + 60 * 60 * 1000).toISOString();
 
-  const { error } = await supabase.from("meetings").insert({
-    lead_id: input.leadId,
-    title: input.title.trim(),
-    starts_at: input.startsAt,
-    ends_at: ends,
-    location: input.location || null,
-    created_by: user?.id ?? null,
-  });
+  const { data: meeting, error } = await supabase
+    .from("meetings")
+    .insert({
+      lead_id: input.leadId,
+      title: input.title.trim(),
+      starts_at: input.startsAt,
+      ends_at: ends,
+      location: input.location || null,
+      created_by: user?.id ?? null,
+    })
+    .select("id")
+    .single();
   if (error) return { error: error.message };
+
+  const syncError = user
+    ? await pushMeetingToGoogle(supabase, user.id, meeting.id, {
+        title: input.title.trim(),
+        startsAt: input.startsAt,
+        endsAt: ends,
+      })
+    : null;
+
   revalidatePath("/crm/mensagens");
   revalidatePath("/agenda");
   revalidatePath("/crm/leads/[id]", "page");
-  return { ok: true };
+  return { ok: true, syncError };
 }
 
 export async function deleteMeeting(meetingId: string) {
   const supabase = await db();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: meeting } = await supabase
+    .from("meetings")
+    .select("google_event_ids")
+    .eq("id", meetingId)
+    .maybeSingle();
+
+  if (user) {
+    await removeMeetingFromGoogle(
+      supabase,
+      user.id,
+      (meeting?.google_event_ids as { personal?: string } | null)?.personal
+    );
+  }
+
   const { error } = await supabase.from("meetings").delete().eq("id", meetingId);
   if (error) return { error: error.message };
   revalidatePath("/crm/mensagens");
