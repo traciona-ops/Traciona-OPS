@@ -10,6 +10,18 @@ type Db = {
   from: (table: string) => any;
 };
 
+/**
+ * Título da reunião com o nome do contato no fim: "Call - Marx Solar".
+ * Não repete o nome se quem escreveu já tiver colocado.
+ */
+export function withLeadName(title: string, leadName?: string | null) {
+  const base = title.trim();
+  const name = leadName?.trim();
+  if (!name) return base;
+  if (base.toLowerCase().includes(name.toLowerCase())) return base;
+  return `${base} - ${name}`;
+}
+
 async function getIntegration(supabase: Db, userId: string) {
   const { data } = await supabase
     .from("calendar_integrations")

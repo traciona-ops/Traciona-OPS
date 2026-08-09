@@ -5,7 +5,11 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { can, NOT_ALLOWED } from "@/lib/permissions";
 import { slugify } from "@/lib/slug";
-import { pushMeetingToGoogle, removeMeetingFromGoogle } from "@/lib/meeting-sync";
+import {
+  pushMeetingToGoogle,
+  removeMeetingFromGoogle,
+  withLeadName,
+} from "@/lib/meeting-sync";
 import type {
   LeadSource,
   UserRole,
@@ -502,11 +506,20 @@ export async function createMeeting(input: {
     input.endsAt ||
     new Date(new Date(input.startsAt).getTime() + 60 * 60 * 1000).toISOString();
 
+  // Agendou pelo chat: o nome do contato entra no fim do título, pra reunião
+  // ser reconhecível na Agenda e no Google, longe da conversa. Ex.: "Call - Marx Solar".
+  const { data: lead } = await supabase
+    .from("leads")
+    .select("name")
+    .eq("id", input.leadId)
+    .maybeSingle();
+  const title = withLeadName(input.title, lead?.name);
+
   const { data: meeting, error } = await supabase
     .from("meetings")
     .insert({
       lead_id: input.leadId,
-      title: input.title.trim(),
+      title,
       starts_at: input.startsAt,
       ends_at: ends,
       location: input.location || null,
@@ -518,7 +531,7 @@ export async function createMeeting(input: {
 
   const syncError = user
     ? await pushMeetingToGoogle(supabase, user.id, meeting.id, {
-        title: input.title.trim(),
+        title,
         startsAt: input.startsAt,
         endsAt: ends,
       })
