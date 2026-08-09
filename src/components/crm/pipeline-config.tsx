@@ -6,7 +6,7 @@ import { Trash2, Loader2, Check, TriangleAlert } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
-import { readableInk } from "@/lib/utils";
+import { readableInk } from "@/lib/utils/ui";
 import { updatePipeline, deletePipeline } from "@/app/(dashboard)/crm/actions";
 import type { Pipeline } from "@/lib/types";
 

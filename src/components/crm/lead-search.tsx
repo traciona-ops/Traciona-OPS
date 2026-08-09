@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { createClient } from "@/lib/supabase/client";
-import { formatPhone } from "@/lib/utils";
+import { formatPhone } from "@/lib/utils/ui";
 
 // Command bar (VibeUX 34): Ctrl+K busca TUDO — leads, páginas e ações —
 // num lugar só, estilo Stripe/Spotlight.

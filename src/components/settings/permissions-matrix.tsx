@@ -2,9 +2,9 @@
 
 import { Fragment, useState } from "react";
 import { Lock } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/ui";
 import { toast } from "@/components/ui/toast";
-import { MODULES, type ModuleKey } from "@/lib/modules";
+import { MODULES, type ModuleKey } from "@/lib/data/modules";
 import { setRolePermission } from "@/app/(dashboard)/settings/permissions-actions";
 import type { UserRole } from "@/lib/types";
 

@@ -8,7 +8,7 @@ import {
   autentiqueConfigured,
   createSignatureDocument,
   getSignatureStatus,
-} from "@/lib/autentique";
+} from "@/lib/services/autentique";
 
 // Contratos do Setor Comercial. PDF original no bucket privado 'contracts';
 // envio de assinatura via Autentique; o LINK vai pelo NOSSO WhatsApp (cai
@@ -473,7 +473,7 @@ export async function deleteContract(contractId: string) {
     if (!(await autentiqueConfigured())) {
       autentiqueRemoved = false;
     } else {
-      const { deleteSignatureDocument } = await import("@/lib/autentique");
+      const { deleteSignatureDocument } = await import("@/lib/services/autentique");
       const r = await deleteSignatureDocument(c.autentique_id as string);
       autentiqueRemoved = r.ok;
       // "não encontrado" = já foi removido por lá (painel, lixeira...) — segue

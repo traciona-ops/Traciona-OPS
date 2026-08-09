@@ -53,10 +53,10 @@ import {
   reorderStages,
   moveAllLeads,
 } from "@/app/(dashboard)/crm/actions";
-import { currencyBRL, stageTimeInfo } from "@/lib/utils";
+import { currencyBRL, stageTimeInfo } from "@/lib/utils/ui";
 import { toast } from "@/components/ui/toast";
 import { createClient } from "@/lib/supabase/client";
-import { useRole } from "@/components/role-context";
+import { useRole } from "@/components/context/role-context";
 import { can } from "@/lib/permissions";
 import type { Pipeline, PipelineStage, Profile } from "@/lib/types";
 

@@ -35,16 +35,9 @@ import {
   TaskTypeSelect,
   DEFAULT_TASK_TYPE,
 } from "@/components/crm/task-type";
-import {
-  TASK_STATUS,
-  TASK_PRIORITY,
-  type LeadTask,
-  type Profile,
-  type TaskCategory,
-  type TaskStatus,
-  type TaskPriority,
-} from "@/lib/types";
-import { ymdBR } from "@/lib/dates";
+import { type LeadTask, type Profile, type TaskCategory, type TaskStatus, type TaskPriority } from "@/lib/types";
+import { TASK_STATUS, TASK_PRIORITY } from "@/lib/data/labels";
+import { ymdBR } from "@/lib/utils/dates";
 import {
   DndContext,
   PointerSensor,

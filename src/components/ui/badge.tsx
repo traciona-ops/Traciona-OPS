@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/ui";
 
 // Fundo é o próprio acento diluído na superfície via color-mix, e não uma cor
 // nova: o texto continua sendo o acento cheio, que já passa 4.5:1. Assim

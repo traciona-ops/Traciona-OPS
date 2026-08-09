@@ -6,7 +6,7 @@ import { Loader2, Search, Trash2, UserPlus, X } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/ui";
 import {
   createTeamMember,
   updateMemberRole,
@@ -14,7 +14,8 @@ import {
   toggleMemberActive,
   deleteTeamMember,
 } from "@/app/(dashboard)/settings/actions";
-import { SECTOR, type Profile, type UserRole, type Sector } from "@/lib/types";
+import { type Profile, type UserRole, type Sector } from "@/lib/types";
+import { SECTOR } from "@/lib/data/labels";
 
 // Usuários da equipe em tabela (estilo Groner): toggle Ativo, filtro
 // Ativos/Todos, busca e criação inline. Ações reusam as server actions.

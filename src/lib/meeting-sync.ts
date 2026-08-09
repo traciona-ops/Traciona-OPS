@@ -1,4 +1,4 @@
-import { createCalendarEvent, deleteCalendarEvent } from "@/lib/google-calendar";
+import { createCalendarEvent, deleteCalendarEvent } from "@/lib/services/google-calendar";
 
 // Espelho das reuniões no Google Calendar. Vive aqui porque duas telas criam
 // reunião — a Agenda e o painel do lead no OPS Chat — e as duas precisam do

@@ -3,15 +3,15 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import type { Profile, UserRole } from "@/lib/types";
-import type { ModuleKey } from "@/lib/modules";
+import type { ModuleKey } from "@/lib/data/modules";
 
 // Permissões de acesso por módulo (Configurações → Permissões de acesso).
 // Regra: ausência de linha em role_permissions = liberado; admin vê tudo.
 // Isto esconde menu e bloqueia rota; dados sensíveis seguem na RLS.
 // O catálogo de módulos vive em lib/modules.ts (client-safe).
 
-export type { ModuleKey } from "@/lib/modules";
-export { MODULES } from "@/lib/modules";
+export type { ModuleKey } from "@/lib/data/modules";
+export { MODULES } from "@/lib/data/modules";
 
 /** Módulos NEGADOS pro perfil (cache por request). Admin: nunca nega. */
 export const getDeniedModules = cache(

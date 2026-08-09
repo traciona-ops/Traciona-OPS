@@ -8,8 +8,8 @@ import {
   BarChart3,
   type LucideIcon,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useRole } from "@/components/role-context";
+import { cn } from "@/lib/utils/ui";
+import { useRole } from "@/components/context/role-context";
 import { can } from "@/lib/permissions";
 
 // Mensagens saiu das abas: a mensageria agora vive no chat flutuante (ChatDock),

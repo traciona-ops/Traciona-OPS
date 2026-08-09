@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { requireModule } from "@/lib/access";
 import { KanbanBoard } from "@/components/crm/kanban-board";
-import { monthBoundsBR } from "@/lib/dates";
+import { monthBoundsBR } from "@/lib/utils/dates";
 import type { Lead, Pipeline, PipelineStage, Profile } from "@/lib/types";
 
 export const metadata = { title: "Negócios" };

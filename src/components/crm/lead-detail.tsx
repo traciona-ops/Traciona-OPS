@@ -22,9 +22,9 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
-import { currencyBRL, formatPhone, readableInk } from "@/lib/utils";
-import { ymdBR } from "@/lib/dates";
-import { useRole } from "@/components/role-context";
+import { currencyBRL, formatPhone, readableInk } from "@/lib/utils/ui";
+import { ymdBR } from "@/lib/utils/dates";
+import { useRole } from "@/components/context/role-context";
 import { can } from "@/lib/permissions";
 import {
   TaskTypeBadge,
@@ -43,17 +43,8 @@ import {
   deleteLead,
 } from "@/app/(dashboard)/crm/actions";
 import { analyzeLead } from "@/app/(dashboard)/crm/ai-actions";
-import {
-  SOURCE_LABEL,
-  type Lead,
-  type LeadNote,
-  type LeadTag,
-  type LeadTask,
-  type LeadTransfer,
-  type PipelineStage,
-  type Profile,
-  type TaskCategory,
-} from "@/lib/types";
+import { type Lead, type LeadNote, type LeadTag, type LeadTask, type LeadTransfer, type PipelineStage, type Profile, type TaskCategory } from "@/lib/types";
+import { SOURCE_LABEL } from "@/lib/data/labels";
 import { ListChecks, Trash2 } from "lucide-react";
 
 const TAG_COLORS = ["#1d6fff", "#00d4ff", "#00e5a0", "#fbbf24", "#ff5c5c", "#f472b6"];

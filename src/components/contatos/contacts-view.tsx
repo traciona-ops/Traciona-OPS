@@ -20,8 +20,8 @@ import {
 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Drawer } from "@/components/ui/dialog";
-import { cn, formatPhone } from "@/lib/utils";
-import { maskPhoneBR } from "@/lib/masks";
+import { cn, formatPhone } from "@/lib/utils/ui";
+import { maskPhoneBR } from "@/lib/utils/masks";
 import { toast } from "@/components/ui/toast";
 import { createClient } from "@/lib/supabase/client";
 import {

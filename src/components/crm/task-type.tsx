@@ -13,7 +13,8 @@ import {
   Check,
   type LucideIcon,
 } from "lucide-react";
-import { TASK_CATEGORY, type TaskCategory } from "@/lib/types";
+import { type TaskCategory } from "@/lib/types";
+import { TASK_CATEGORY } from "@/lib/data/labels";
 
 export const TASK_TYPE_ICON: Record<TaskCategory, LucideIcon> = {
   ligacao: Phone,

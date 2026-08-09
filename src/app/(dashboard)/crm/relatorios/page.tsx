@@ -6,9 +6,10 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { requireModule } from "@/lib/access";
 import { can } from "@/lib/permissions";
-import { currencyBRL } from "@/lib/utils";
-import { monthBoundsBR } from "@/lib/dates";
-import { SOURCE_LABEL, type Lead, type LeadSource, type Pipeline, type PipelineStage } from "@/lib/types";
+import { currencyBRL } from "@/lib/utils/ui";
+import { monthBoundsBR } from "@/lib/utils/dates";
+import { type Lead, type LeadSource, type Pipeline, type PipelineStage } from "@/lib/types";
+import { SOURCE_LABEL } from "@/lib/data/labels";
 
 export const metadata = { title: "Relatórios" };
 

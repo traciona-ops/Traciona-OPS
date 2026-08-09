@@ -1,5 +1,5 @@
 import PDFDocument from "pdfkit/js/pdfkit.standalone.js";
-import { TRACIONA_LOGO_PNG } from "@/lib/contract-templates/traciona-logo";
+import { TRACIONA_LOGO_PNG } from "@/lib/data/contract-templates/traciona-logo";
 
 // Texto do contrato → PDF A4 formatado.
 // Convenções do texto: 1ª linha = título; linhas "N. TÍTULO" e "ASSINATURAS"

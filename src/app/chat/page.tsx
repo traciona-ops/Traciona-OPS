@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { getProfile } from "@/lib/auth";
 import { requireModule } from "@/lib/access";
-import { RoleProvider } from "@/components/role-context";
+import { RoleProvider } from "@/components/context/role-context";
 import { WhatsappBanner } from "@/components/whatsapp-banner";
-import { ChatWorkspace } from "@/components/chat-dock";
+import { ChatWorkspace } from "@/components/chat/workspace/chat-workspace";
 
 // Mensageria como APP SEPARADO: tela cheia, sem a barra lateral do sistema.
 // É o mesmo ChatWorkspace do popup. Aberto em nova guia pelo ↗ do chat.

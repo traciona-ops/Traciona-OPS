@@ -13,7 +13,7 @@ import {
   listSubscriptionPayments,
   deletePayment,
   mapAsaasStatus,
-} from "@/lib/asaas";
+} from "@/lib/services/asaas";
 
 /**
  * Cobrança manual direto daqui (o painel do Asaas dentro do sistema):

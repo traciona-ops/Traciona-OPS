@@ -5,7 +5,7 @@ import {
   createSubscription,
   listSubscriptionPayments,
   mapAsaasStatus,
-} from "@/lib/asaas";
+} from "@/lib/services/asaas";
 
 // Fecha o ciclo do dinheiro: contrato ASSINADO → venda recorrente criada →
 // assinatura no Asaas → 1ª fatura no WhatsApp do cliente. Idempotente por

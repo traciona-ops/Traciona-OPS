@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { mapAsaasStatus, type AsaasPayment } from "@/lib/asaas";
+import { mapAsaasStatus, type AsaasPayment } from "@/lib/services/asaas";
 
 // Webhook do Asaas: espelha cobranças no extrato (sale_payments) e agradece
 // pelo WhatsApp quando o pagamento cai. Auth: ?secret= na URL cadastrada

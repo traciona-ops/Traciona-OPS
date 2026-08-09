@@ -13,8 +13,8 @@ import {
   requestFullHistorySync,
   getAvatar,
   adminCreateInstance,
-} from "@/lib/whatsapp/dinastia";
-import { tokenForNumberId } from "@/lib/whatsapp/numbers";
+} from "@/lib/services/whatsapp/dinastia";
+import { tokenForNumberId } from "@/lib/services/whatsapp/numbers";
 import { headers as nextHeaders } from "next/headers";
 import type { UserRole, Sector } from "@/lib/types";
 

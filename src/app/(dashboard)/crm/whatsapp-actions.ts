@@ -14,9 +14,9 @@ import {
   editTextMessage,
   sendChatPresence,
   type MediaKind,
-} from "@/lib/whatsapp/dinastia";
-import { resolveLeadNumber } from "@/lib/whatsapp/numbers";
-import { SECTOR } from "@/lib/types";
+} from "@/lib/services/whatsapp/dinastia";
+import { resolveLeadNumber } from "@/lib/services/whatsapp/numbers";
+import { SECTOR } from "@/lib/data/labels";
 
 export async function sendWhatsappMessage(
   leadId: string,
@@ -427,7 +427,7 @@ export async function fetchDockContext(leadId: string) {
  */
 export async function startConversation(input: { phone: string; name?: string }) {
   const { getProfile } = await import("@/lib/auth");
-  const { onlyDigits } = await import("@/lib/whatsapp/dinastia");
+  const { onlyDigits } = await import("@/lib/services/whatsapp/dinastia");
   const profile = await getProfile();
 
   const digits = onlyDigits(input.phone);
@@ -813,7 +813,7 @@ export async function presenceKeepalive() {
     key: "chat_activity",
     value: { at: new Date().toISOString() },
   });
-  const { setGlobalPresence } = await import("@/lib/whatsapp/dinastia");
+  const { setGlobalPresence } = await import("@/lib/services/whatsapp/dinastia");
   await setGlobalPresence("available");
   return { ok: true };
 }

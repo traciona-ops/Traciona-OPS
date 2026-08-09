@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Check, Loader2 } from "lucide-react";
 import { setMonthlyGoal } from "@/app/(dashboard)/settings/actions";
-import { currencyBRL } from "@/lib/utils";
+import { currencyBRL } from "@/lib/utils/ui";
 
 // Barra "quanto falta pra meta" dentro do card Fechado no mês.
 // Meta é editável inline por admin/gestor.

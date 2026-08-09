@@ -110,7 +110,7 @@ export async function updateMeeting(
       integration?.google_refresh_token &&
       meeting.google_event_ids?.personal
     ) {
-      const { updateCalendarEvent } = await import("@/lib/google-calendar");
+      const { updateCalendarEvent } = await import("@/lib/services/google-calendar");
 
       const updates: Record<string, any> = {};
       if (data.title) updates.summary = data.title;

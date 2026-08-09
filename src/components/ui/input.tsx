@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/ui";
 
 // text-base no mobile: abaixo de 16px o Safari do iOS dá zoom automático ao
 // focar o campo e desmonta o layout. No desktop volta pra 14px pela densidade.

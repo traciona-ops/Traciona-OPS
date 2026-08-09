@@ -23,15 +23,8 @@ import {
   toggleAutomation,
   deleteAutomation,
 } from "@/app/(dashboard)/crm/actions";
-import {
-  AUTOMATION_TRIGGER,
-  AUTOMATION_ACTION,
-  type Automation,
-  type AutomationTrigger,
-  type AutomationAction,
-  type Pipeline,
-  type PipelineStage,
-} from "@/lib/types";
+import { type Automation, type AutomationTrigger, type AutomationAction, type Pipeline, type PipelineStage } from "@/lib/types";
+import { AUTOMATION_TRIGGER, AUTOMATION_ACTION } from "@/lib/data/labels";
 
 const SELECT_CLASS =
   "h-10 rounded-lg bg-[var(--color-surface-2)] border border-[var(--color-border-strong)] px-2.5 text-sm text-[var(--color-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/40 focus:border-[var(--color-primary)] focus-visible:ring-[var(--color-primary)] transition";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { cn, initials, readableInk } from "@/lib/utils";
+import { cn, initials, readableInk } from "@/lib/utils/ui";
 
 // Cores fixas de identidade (não seguem o tema): a mesma pessoa tem sempre a
 // mesma cor nos dois temas. O azul é o próprio primary do claro, que já passa

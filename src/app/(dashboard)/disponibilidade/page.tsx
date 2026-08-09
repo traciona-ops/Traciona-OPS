@@ -4,7 +4,7 @@ import { getProfile } from "@/lib/auth";
 import { requireModule } from "@/lib/access";
 import { createClient } from "@/lib/supabase/server";
 import { AvailabilityFilters } from "@/components/disponibilidade/availability-filters";
-import { TZ, ymdBR } from "@/lib/dates";
+import { TZ, ymdBR } from "@/lib/utils/dates";
 import type { Meeting, Profile } from "@/lib/types";
 
 export const metadata = { title: "Disponibilidade" };

@@ -7,9 +7,9 @@ import {
   setIntegrationSecret,
   bustIntegrationCache,
 } from "@/lib/integrations";
-import { getStatus, adminListInstances } from "@/lib/whatsapp/dinastia";
-import { accountInfo, autentiqueConfigured } from "@/lib/autentique";
-import { getBalance, asaasConfigured } from "@/lib/asaas";
+import { getStatus, adminListInstances } from "@/lib/services/whatsapp/dinastia";
+import { accountInfo, autentiqueConfigured } from "@/lib/services/autentique";
+import { getBalance, asaasConfigured } from "@/lib/services/asaas";
 
 // Central de Integrações (Configurações). Chaves salvas no cofre do banco
 // (RLS sem policy — navegador nunca lê); .env segue como reserva. Toda

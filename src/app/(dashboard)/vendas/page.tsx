@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { asaasConfigured, getBalance } from "@/lib/asaas";
+import { asaasConfigured, getBalance } from "@/lib/services/asaas";
 import { requireModule } from "@/lib/access";
 import {
   SalesView,

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2, Power, QrCode, RefreshCw, Unlink } from "lucide-react";
 import { WhatsAppIcon } from "@/components/whatsapp-icon";
-import { formatPhone } from "@/lib/utils";
+import { formatPhone } from "@/lib/utils/ui";
 import {
   getWhatsappState,
   connectWhatsapp,

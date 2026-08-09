@@ -13,7 +13,8 @@ import {
   attachDeal,
   addNote,
 } from "@/app/(dashboard)/crm/actions";
-import { SOURCE_LABEL, type LeadSource, type Profile } from "@/lib/types";
+import { type LeadSource, type Profile } from "@/lib/types";
+import { SOURCE_LABEL } from "@/lib/data/labels";
 
 // "Adicionar negócio" em duas colunas (layout Groner, cores do sistema):
 //   esquerda = o NEGÓCIO (valor, origem, responsável, descrição)

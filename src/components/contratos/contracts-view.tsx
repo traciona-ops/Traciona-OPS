@@ -23,8 +23,8 @@ import {
 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { cn, currencyBRL } from "@/lib/utils";
-import { maskCpf, maskCnpj } from "@/lib/masks";
+import { cn, currencyBRL } from "@/lib/utils/ui";
+import { maskCpf, maskCnpj } from "@/lib/utils/masks";
 import { toast } from "@/components/ui/toast";
 import {
   createContract,

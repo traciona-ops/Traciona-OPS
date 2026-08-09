@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { can, NOT_ALLOWED } from "@/lib/permissions";
-import { slugify } from "@/lib/slug";
+import { slugify } from "@/lib/utils/slug";
 import {
   pushMeetingToGoogle,
   removeMeetingFromGoogle,

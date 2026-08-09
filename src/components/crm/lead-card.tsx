@@ -21,18 +21,13 @@ import {
 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { NewTaskDialog } from "./new-task-dialog";
-import { currencyBRL, stageTimeInfo, STAGE_LEVEL_STYLE } from "@/lib/utils";
-import { useRole } from "@/components/role-context";
+import { currencyBRL, stageTimeInfo, STAGE_LEVEL_STYLE } from "@/lib/utils/ui";
+import { useRole } from "@/components/context/role-context";
 import { can } from "@/lib/permissions";
 import { updateLead, deleteLead } from "@/app/(dashboard)/crm/actions";
 import { toast } from "@/components/ui/toast";
-import {
-  SOURCE_LABEL,
-  type Lead,
-  type LeadTag,
-  type PipelineStage,
-  type Profile,
-} from "@/lib/types";
+import { type Lead, type LeadTag, type PipelineStage, type Profile } from "@/lib/types";
+import { SOURCE_LABEL } from "@/lib/data/labels";
 
 type CardTask = { id: string; done: boolean; due_date: string | null };
 

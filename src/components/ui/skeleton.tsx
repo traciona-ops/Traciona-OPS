@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/ui";
 
 /** Bloco pulsante dos esqueletos de carregamento (loading.tsx das rotas). */
 export function Skeleton({ className }: { className?: string }) {

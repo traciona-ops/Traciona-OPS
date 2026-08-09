@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { Bold, Italic, List, ListOrdered, Underline } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/ui";
 
 // Editor rich text minimalista (contentEditable + execCommand). O HTML é
 // sanitizado no SERVIDOR antes de salvar — aqui é só a edição.

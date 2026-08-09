@@ -13,8 +13,8 @@ import {
 } from "lucide-react";
 import { getProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { currencyBRL } from "@/lib/utils";
-import { ymdBR, monthBoundsBR, TZ } from "@/lib/dates";
+import { currencyBRL } from "@/lib/utils/ui";
+import { ymdBR, monthBoundsBR, TZ } from "@/lib/utils/dates";
 import { GoalBar } from "@/components/goal-bar";
 import { can } from "@/lib/permissions";
 

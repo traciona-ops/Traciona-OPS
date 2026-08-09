@@ -13,7 +13,7 @@ import {
   Trash2,
   User,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/ui";
 import { toast } from "@/components/ui/toast";
 import { deleteMeeting } from "@/app/(dashboard)/agenda/actions";
 

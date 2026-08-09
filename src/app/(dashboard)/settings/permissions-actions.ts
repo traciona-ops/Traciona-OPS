@@ -3,7 +3,7 @@
 import { getProfile } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { MODULES, type ModuleKey } from "@/lib/modules";
+import { MODULES, type ModuleKey } from "@/lib/data/modules";
 import type { UserRole } from "@/lib/types";
 
 // Ações da matriz de Permissões de acesso. Só guardamos NEGAÇÕES

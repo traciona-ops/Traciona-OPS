@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { autentiqueConfigured } from "@/lib/autentique";
+import { autentiqueConfigured } from "@/lib/services/autentique";
 import { requireModule } from "@/lib/access";
 import {
   ContractsView,

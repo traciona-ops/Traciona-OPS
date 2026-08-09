@@ -20,7 +20,7 @@ import {
   PanelLeftOpen,
   type LucideIcon,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/ui";
 import { Avatar } from "@/components/ui/avatar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LeadSearch } from "@/components/crm/lead-search";

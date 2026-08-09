@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/ui";
 import { submitOpsForm } from "@/app/f/[token]/actions";
 
 // OPS Form — formulário público estilo Respondi/Typeform: uma pergunta por

@@ -4,7 +4,7 @@ import {
   renderTrafegoPago,
   TRAFEGO_PAGO_LABEL,
   type TrafegoPagoInput,
-} from "@/lib/contract-templates/trafego-pago";
+} from "@/lib/data/contract-templates/trafego-pago";
 import { contractTextToPdf } from "@/lib/contract-pdf";
 
 const BUCKET = "contracts";

@@ -2,7 +2,8 @@
 
 import { CalendarDays, Search } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
-import { SOURCE_LABEL, type LeadSource, type Profile } from "@/lib/types";
+import { type LeadSource, type Profile } from "@/lib/types";
+import { SOURCE_LABEL } from "@/lib/data/labels";
 
 export type LeadFilter = {
   q: string;

@@ -1,7 +1,7 @@
 import { Sidebar } from "@/components/sidebar";
-import { RoleProvider } from "@/components/role-context";
-import { NotificationsProvider } from "@/components/notifications-provider";
-import { ChatDockLazy } from "@/components/chat-dock-lazy";
+import { RoleProvider } from "@/components/context/role-context";
+import { NotificationsProvider } from "@/components/context/notifications-provider";
+import { ChatDockLazy } from "@/components/chat/chat-dock-lazy";
 import { WhatsappBanner } from "@/components/whatsapp-banner";
 import { Toaster } from "@/components/ui/toast";
 import { getProfile } from "@/lib/auth";

@@ -9,3 +9,4 @@ playwright-report/
 test-results/
 .auth/
 .claude/settings.json.graphify-bak
+tsconfig.tsbuildinfo

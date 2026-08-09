@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
-import { aiConfigured, analyzeConversation, draftReply } from "@/lib/ai";
+import { aiConfigured, analyzeConversation, draftReply } from "@/lib/services/ai";
 
 const NOT_CONFIGURED =
   "IA não configurada: adicione a chave ANTHROPIC_API_KEY nas variáveis de ambiente.";

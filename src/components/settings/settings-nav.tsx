@@ -14,7 +14,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/ui";
 
 // Submenu das Configurações (estilo Groner): grupos sanfona + busca de menus
 // + breadcrumb. Novas telas de config entram no MENU e ganham rota própria.

@@ -16,7 +16,7 @@
 - **WhatsApp**: DinastiAPI (baseada em **wuzapi/whatsmeow**)
 - **Deploy**: Vercel
 - **Agendamento**: `pg_cron` + `pg_net` no Supabase
-- **Migrations**: runner próprio `db-run.mjs` (lê `.env.local`, roda SQL via `pg`, session pooler)
+- **Migrations**: runner próprio `scripts/db-run.mjs` (lê `.env.local`, roda SQL via `pg`, session pooler)
 
 ---
 
@@ -76,7 +76,7 @@
   vendedor **só cria pra si** (senão o `WITH CHECK` barra o insert).
 
 ### Migrations
-- Aplicar com `node db-run.mjs supabase/migrations/000X_nome.sql`.
+- Aplicar com `node scripts/db-run.mjs supabase/migrations/000X_nome.sql`.
 - **Enum (`ALTER TYPE ... ADD VALUE`)**: o valor novo **não pode ser usado na mesma
   transação**. Separe em DOIS arquivos/execuções: 1) adiciona valores ao enum; 2) usa.
 - `drop policy if exists` antes de recriar (idempotência).
