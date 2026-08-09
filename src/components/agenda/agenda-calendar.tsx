@@ -1,16 +1,21 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
   Clock,
+  Loader2,
   MapPin,
+  Trash2,
   User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "@/components/ui/toast";
+import { deleteMeeting } from "@/app/(dashboard)/agenda/actions";
 
 // Agenda repaginada: grade mensal limpa + painel do dia selecionado.
 // Tudo no fuso BR (o servidor manda ISO; o cliente formata).
@@ -40,7 +45,13 @@ function timeBR(iso: string): string {
   });
 }
 
-export function AgendaCalendar({ meetings }: { meetings: CalMeeting[] }) {
+export function AgendaCalendar({
+  meetings,
+  onDateDoubleClick,
+}: {
+  meetings: CalMeeting[];
+  onDateDoubleClick?: (date: string) => void;
+}) {
   const todayYmd = ymdBR(new Date());
   const [cursor, setCursor] = useState(() => {
     const [y, m] = todayYmd.split("-").map(Number);
@@ -178,6 +189,11 @@ export function AgendaCalendar({ meetings }: { meetings: CalMeeting[] }) {
               <button
                 key={c.ymd}
                 onClick={() => setSelected(c.ymd)}
+                onDoubleClick={() => {
+                  const [y, m, d] = c.ymd.split("-");
+                  const dateTimeLocal = `${y}-${m}-${d}T09:00`;
+                  onDateDoubleClick?.(dateTimeLocal);
+                }}
                 className={cn(
                   "flex min-h-[72px] flex-col items-stretch gap-1 border-b border-r border-[var(--color-border)] p-1.5 text-left transition-colors last:border-r-0 sm:min-h-[84px]",
                   !c.inMonth && "bg-[var(--color-surface-2)]/40",
@@ -258,8 +274,25 @@ export function AgendaCalendar({ meetings }: { meetings: CalMeeting[] }) {
 }
 
 function MeetingItem({ m, withDate }: { m: CalMeeting; withDate?: boolean }) {
+  const router = useRouter();
+  const [confirming, setConfirming] = useState(false);
+  const [pending, startTransition] = useTransition();
+
+  function remove() {
+    startTransition(async () => {
+      try {
+        await deleteMeeting(m.id);
+        toast("Reunião apagada.");
+        router.refresh();
+      } catch {
+        toast("Não consegui apagar a reunião.", { type: "error" });
+        setConfirming(false);
+      }
+    });
+  }
+
   return (
-    <div className="flex items-start gap-2.5 rounded-xl bg-[var(--color-surface-2)]/70 px-3 py-2.5">
+    <div className="group flex items-start gap-2.5 rounded-xl bg-[var(--color-surface-2)]/70 px-3 py-2.5">
       <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[var(--color-primary)]/12">
         <Clock className="h-4 w-4 text-[var(--color-primary)]" />
       </span>
@@ -293,6 +326,33 @@ function MeetingItem({ m, withDate }: { m: CalMeeting; withDate?: boolean }) {
           </Link>
         )}
       </div>
+
+      {confirming ? (
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            onClick={remove}
+            disabled={pending}
+            className="flex h-7 items-center rounded-lg bg-[var(--color-danger)] px-2 text-[11px] font-medium text-[var(--color-on-accent)] transition hover:opacity-90 disabled:opacity-50"
+          >
+            {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : "Apagar"}
+          </button>
+          <button
+            onClick={() => setConfirming(false)}
+            disabled={pending}
+            className="flex h-7 items-center rounded-lg px-2 text-[11px] font-medium text-[var(--color-muted)] transition hover:bg-[var(--color-surface-2)]"
+          >
+            Não
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setConfirming(true)}
+          aria-label={`Apagar reunião ${m.title}`}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[var(--color-muted-2)] opacity-0 transition hover:bg-[var(--color-surface)] hover:text-[var(--color-danger)] focus-visible:opacity-100 group-hover:opacity-100"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      )}
     </div>
   );
 }

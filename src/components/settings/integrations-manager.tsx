@@ -10,6 +10,7 @@ import {
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { toast } from "@/components/ui/toast";
+import { GoogleCalendarConnect } from "@/components/agenda/google-calendar-connect";
 import {
   getIntegrationsStatus,
   saveIntegration,
@@ -152,6 +153,8 @@ export function IntegrationsManager() {
             </>
           }
         />
+
+        <GoogleCalendarConnect />
       </div>
     </section>
   );

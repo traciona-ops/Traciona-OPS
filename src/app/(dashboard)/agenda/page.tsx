@@ -1,10 +1,8 @@
 import { Topbar } from "@/components/topbar";
 import { createClient } from "@/lib/supabase/server";
 import { requireModule } from "@/lib/access";
-import {
-  AgendaCalendar,
-  type CalMeeting,
-} from "@/components/agenda/agenda-calendar";
+import type { CalMeeting } from "@/components/agenda/agenda-calendar";
+import { AgendaWrapper } from "@/components/agenda/agenda-wrapper";
 import type { Meeting } from "@/lib/types";
 
 type MeetingRow = Meeting & { lead: { id: string; name: string } | null };
@@ -33,7 +31,7 @@ export default async function AgendaPage() {
       <Topbar title="Agenda" subtitle="Reuniões e compromissos no calendário" />
       <div className="flex-1 overflow-y-auto p-4 md:p-6">
         <div className="mx-auto max-w-5xl">
-          <AgendaCalendar meetings={meetings} />
+          <AgendaWrapper meetings={meetings} />
         </div>
       </div>
     </>
