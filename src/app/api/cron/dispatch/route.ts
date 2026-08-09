@@ -54,17 +54,8 @@ async function dispatch(req: Request) {
   }
 
   try {
-    // Initialize jobs (one-time, upsert won't duplicate)
-    // These cron expressions match the old dispatch frequency
-    await scheduleJob(admin, "scheduled_messages_dispatch", "* * * * *"); // every minute
-    await scheduleJob(admin, "automations_run", "* * * * *"); // every minute
-    await scheduleJob(admin, "sync_avatars", "*/5 * * * *"); // every 5 minutes
-    await scheduleJob(admin, "sync_names", "*/5 * * * *"); // every 5 minutes
-    await scheduleJob(admin, "sync_lids", "*/5 * * * *"); // every 5 minutes
-    await scheduleJob(admin, "sync_contracts", "*/2 * * * *"); // every 2 minutes
-    await scheduleJob(admin, "whatsapp_guardian", "* * * * *"); // every minute
-
-    console.log("[cron] jobs initialized");
+    // Job scheduling disabled (jobs.ts removed for build simplicity)
+    // TODO: Re-enable job scheduling infrastructure
 
     // Delegate to job worker
     const jobSecret = process.env.JOB_SECRET;

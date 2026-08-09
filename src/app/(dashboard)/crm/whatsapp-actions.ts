@@ -37,7 +37,7 @@ export async function sendWhatsappMessage(
 
   const { data: lead } = await supabase
     .from("leads")
-    .select(selectLead('basic'))
+    .select('*')
     .eq("id", leadId)
     .single();
 
@@ -118,7 +118,7 @@ export async function sendWhatsappMedia(formData: FormData) {
   } = await supabase.auth.getUser();
   const { data: lead } = await supabase
     .from("leads")
-    .select(selectLead('basic'))
+    .select('*')
     .eq("id", leadId)
     .single();
   if (!lead?.phone) return { error: "Lead sem telefone." };
@@ -215,7 +215,7 @@ export async function scheduleMessage(
 
   const { data: lead } = await supabase
     .from("leads")
-    .select(selectLead('basic'))
+    .select('*')
     .eq("id", leadId)
     .single();
   if (!lead?.phone) return { error: "Lead sem telefone." };

@@ -146,7 +146,7 @@ export async function attachLeadToPipeline(leadId: string) {
 
   const { data: lead } = await supabase
     .from("leads")
-    .select(selectLead('basic'))
+    .select('*')
     .eq("id", leadId)
     .maybeSingle();
   if (!lead) return { error: "Contato não encontrado." };

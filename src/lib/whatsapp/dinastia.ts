@@ -34,26 +34,19 @@ export async function resolvePhone(
 ): Promise<string | null> {
   if (!BASE || !TOKEN) return null;
   try {
-    return await withCircuitBreaker(
-      "dinastia",
-      async () => {
-        const res = await fetch(`${BASE}/user/check`, {
-          method: "POST",
-          headers: headers(authToken),
-          body: JSON.stringify({ Phone: [number] }),
-          // Sem timeout, uma instância travada pendura o cron inteiro.
-          signal: AbortSignal.timeout(15000),
-        });
-        const json = await res.json().catch(() => ({}));
-        const u = json?.data?.Users?.[0];
-        if (u?.IsInWhatsapp && u?.JID) {
-          return String(u.JID).split("@")[0] || null;
-        }
-        return null;
-      },
-      5,
-      60000
-    );
+    const res = await fetch(`${BASE}/user/check`, {
+      method: "POST",
+      headers: headers(authToken),
+      body: JSON.stringify({ Phone: [number] }),
+      // Sem timeout, uma instância travada pendura o cron inteiro.
+      signal: AbortSignal.timeout(15000),
+    });
+    const json = await res.json().catch(() => ({}));
+    const u = json?.data?.Users?.[0];
+    if (u?.IsInWhatsapp && u?.JID) {
+      return String(u.JID).split("@")[0] || null;
+    }
+    return null;
   } catch {
     return null;
   }
@@ -125,24 +118,17 @@ async function postSend(
 ): Promise<SendResult> {
   if (!BASE || !TOKEN) return { ok: false, error: "WhatsApp não configurado." };
   try {
-    return await withCircuitBreaker(
-      "dinastia",
-      async () => {
-        const res = await fetch(`${BASE}${path}`, {
-          method: "POST",
-          headers: headers(authToken),
-          body: JSON.stringify(payload),
-          signal: AbortSignal.timeout(30000),
-        });
-        const json = await res.json().catch(() => ({}));
-        if (!res.ok || json?.success === false) {
-          throw new Error(json?.error || `HTTP ${res.status}`);
-        }
-        return { ok: true, id: json?.data?.Id ?? json?.data?.id ?? null };
-      },
-      5,
-      60000
-    );
+    const res = await fetch(`${BASE}${path}`, {
+      method: "POST",
+      headers: headers(authToken),
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(30000),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || json?.success === false) {
+      throw new Error(json?.error || `HTTP ${res.status}`);
+    }
+    return { ok: true, id: json?.data?.Id ?? json?.data?.id ?? null };
   } catch (e) {
     return { ok: false, error: (e as Error).message };
   }

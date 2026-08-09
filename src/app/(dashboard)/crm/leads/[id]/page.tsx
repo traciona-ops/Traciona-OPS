@@ -26,7 +26,7 @@ export async function generateMetadata({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-  const q = supabase.from("leads").select(selectLead('basic'));
+  const q = supabase.from("leads").select('*');
   const { data } = await (isCodeParam(id)
     ? q.eq("code", Number(id))
     : q.eq("id", id)

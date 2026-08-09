@@ -30,30 +30,22 @@ async function req<T>(
   const { key: KEY, base: BASE } = await creds();
   if (!KEY) return { error: "Asaas não configurado (ASAAS_API_KEY)." };
   try {
-    const result = await withCircuitBreaker(
-      "asaas",
-      async () => {
-        const res = await fetch(`${BASE}${path}`, {
-          method,
-          headers: {
-            access_token: KEY,
-            "Content-Type": "application/json",
-          },
-          body: body ? JSON.stringify(body) : undefined,
-          signal: AbortSignal.timeout(20000),
-        });
-        const json = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          const desc =
-            json?.errors?.[0]?.description ?? `Asaas HTTP ${res.status}`;
-          throw new Error(String(desc));
-        }
-        return json as T;
+    const res = await fetch(`${BASE}${path}`, {
+      method,
+      headers: {
+        access_token: KEY,
+        "Content-Type": "application/json",
       },
-      5,
-      60000
-    );
-    return { data: result };
+      body: body ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(20000),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const desc =
+        json?.errors?.[0]?.description ?? `Asaas HTTP ${res.status}`;
+      throw new Error(String(desc));
+    }
+    return { data: json as T };
   } catch (e) {
     return { error: (e as Error).message };
   }
