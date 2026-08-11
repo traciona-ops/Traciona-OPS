@@ -28,6 +28,11 @@ const TOGGLES = [
     title: "Criar card automaticamente",
     desc: "Mensagem recebida de número novo já cria o card no funil (desligado = fica só no chat até você adicionar)",
   },
+  {
+    key: "sessions_enabled" as const,
+    title: "Sessões de atendimento (filas)",
+    desc: "Abre ticket ao receber mensagem, com fila Aguardando / Em atendimento / Pausado — o histórico do lead continua intacto",
+  },
 ];
 
 /** Números conectáveis, QR do selecionado, chaves do número e sync forçado. */

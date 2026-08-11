@@ -7,6 +7,7 @@ import { useTypingPresence } from "@/hooks/use-typing-presence";
 import { ChatHeader } from "@/components/chat/conversation/chat-header";
 import { MessageList } from "@/components/chat/conversation/message-list";
 import { MessageComposer } from "@/components/chat/conversation/composer/message-composer";
+import { useActiveSession } from "@/hooks/use-active-session";
 import type { ChatLead, ChatMessage } from "@/components/chat/types";
 import type { QuickReply } from "@/lib/types";
 
@@ -23,6 +24,8 @@ export function ChatPanel({
   owner,
   currentUserId,
   inPipeline,
+  sessionsEnabled = false,
+  onSessionChanged,
   onSync,
   onOwnerChanged,
   onDelete,
@@ -33,17 +36,14 @@ export function ChatPanel({
   connected: boolean;
   quickReplies: QuickReply[];
   userName: string;
-  /** Responsável atual (pro status de atendimento). */
   owner?: { id: string; name: string } | null;
   currentUserId?: string;
-  /** false = conversa sem card no funil → mostra "Adicionar ao funil". */
   inPipeline?: boolean;
-  /** Sincronizar: o dock re-busca o thread; sem callback, refresh da página. */
+  sessionsEnabled?: boolean;
+  onSessionChanged?: () => void | Promise<void>;
   onSync?: () => void | Promise<void>;
   onOwnerChanged?: () => void | Promise<void>;
-  /** Excluir a conversa (só aparece quando fornecido — perfil com permissão). */
   onDelete?: () => void | Promise<void>;
-  /** Mobile: volta pra lista de conversas (botão ← só aparece em telas pequenas). */
   onBack?: () => void;
 }) {
   const { allMsgs, firstUnreadId, sending, uploading, sendText, sendMedia } =
@@ -53,6 +53,10 @@ export function ChatPanel({
   const { contactTyping, pingTyping, stopTyping } = useTypingPresence(
     lead.id,
     !!lead.phone
+  );
+  const { session, reload: reloadSession } = useActiveSession(
+    lead.id,
+    sessionsEnabled
   );
 
   // Responder mensagem (citação estilo WhatsApp)
@@ -73,6 +77,11 @@ export function ChatPanel({
         currentUserId={currentUserId}
         inPipeline={inPipeline}
         contactTyping={contactTyping}
+        session={sessionsEnabled ? session : null}
+        onSessionChanged={async () => {
+          await reloadSession();
+          await onSessionChanged?.();
+        }}
         onSync={onSync}
         onOwnerChanged={onOwnerChanged}
         onDelete={onDelete}
