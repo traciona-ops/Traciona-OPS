@@ -16,7 +16,7 @@ for (const line of readFileSync(new URL("../../.env.local", import.meta.url), "u
 }
 
 const APP = process.argv[2] || "http://localhost:3000";
-const SHOT = process.argv[3] || "chat-refactor.png";
+const SHOT = process.argv[3] || "scripts/checks/chat-refactor.png";
 const EMAIL = "e2e-chat-refactor@traciona.internal";
 const PASS = "E2e-chat-refactor-2026!x";
 
