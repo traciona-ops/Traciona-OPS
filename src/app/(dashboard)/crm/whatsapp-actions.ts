@@ -1,6 +1,7 @@
-"use server";
-
-/** Barrel estável — UI continua importando daqui. */
+/** Barrel estável — UI continua importando daqui.
+ *  Sem "use server" aqui: Next 16 só permite export de async fn
+ *  em arquivos com a diretiva; as actions reais estão nos *-actions.ts.
+ */
 export {
   sendWhatsappMessage,
   sendWhatsappMedia,
