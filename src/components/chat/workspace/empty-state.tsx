@@ -1,19 +1,26 @@
 "use client";
 
-import { WhatsAppIcon } from "@/components/whatsapp-icon";
-
-/** Nenhuma conversa aberta ainda (coluna do meio, no desktop). */
+/** Empty state da coluna do meio quando nenhuma conversa está aberta. */
 export function EmptyState() {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-[var(--color-background)] text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-[var(--radius-card)] bg-[var(--chat-accent)]/10">
-        <WhatsAppIcon className="h-9 w-9 text-[var(--chat-accent)]" />
+    <div className="relative flex flex-1 flex-col items-center justify-center gap-4 overflow-hidden bg-[var(--color-background)] px-8 text-center">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-[0.35]"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 20% 30%, var(--chat-accent) 0, transparent 28%), radial-gradient(circle at 80% 70%, var(--color-primary) 0, transparent 26%)",
+        }}
+      />
+      <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl bg-[var(--chat-accent)]/12">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/brand/symbol.svg" alt="" className="h-10 w-10" />
       </div>
-      <div>
-        <p className="text-sm font-medium">Suas conversas do WhatsApp</p>
-        <p className="mt-1 px-8 text-xs text-[var(--color-muted-2)]">
-          Selecione uma conversa ao lado ou comece uma nova com o botão de
-          escrever lá em cima.
+      <div className="relative max-w-sm">
+        <p className="text-xl font-semibold tracking-tight">OPS Chat</p>
+        <p className="mt-2 text-sm text-[var(--color-muted)]">
+          Conecte, converse e monitore o WhatsApp com histórico contínuo do CRM
+          e sessões de atendimento quando precisar.
         </p>
       </div>
     </div>

@@ -4,8 +4,15 @@ export type {
   ChatSessionStatus,
   InboxSessionRow,
   QueueTab,
+  SessionMetrics,
+  SessionMetricsScope,
 } from "@/lib/chat-sessions/types";
-export { sessionsEnabled, vipStageNames, bustSessionsSettingsCache } from "@/lib/chat-sessions/settings";
+export { fmtDuration } from "@/lib/chat-sessions/format";
+export {
+  sessionsEnabled,
+  vipStageNames,
+  bustSessionsSettingsCache,
+} from "@/lib/chat-sessions/settings";
 export { ensureActiveSession } from "@/lib/chat-sessions/ensure-active-session";
 export {
   claimSession,
