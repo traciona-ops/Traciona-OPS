@@ -150,7 +150,7 @@ export function MessageComposer({
       new Date(schedWhen).toISOString()
     );
     setScheduling(false);
-    if (r?.error) {
+    if ("error" in r && r.error) {
       setError(r.error);
       return;
     }

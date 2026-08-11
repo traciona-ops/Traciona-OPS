@@ -180,7 +180,7 @@ export function useChatMessages(leadId: string, messages: ChatMessage[]) {
     if (caption?.trim()) fd.append("caption", caption.trim());
     const r = await sendWhatsappMedia(fd);
     setUploading(false);
-    if (r?.error) return r.error;
+    if ("error" in r && r.error) return r.error;
     router.refresh();
     return null;
   }

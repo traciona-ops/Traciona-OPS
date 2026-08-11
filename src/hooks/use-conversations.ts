@@ -18,10 +18,14 @@ import type { WhatsappMessage } from "@/lib/types";
  * `getSelectedId` devolve a conversa aberta agora: mensagem que chega nela já
  * entra como lida.
  */
-export function useConversations(getSelectedId: () => string | null) {
+export function useConversations(
+  getSelectedId: () => string | null,
+  initialConversations?: Conv[]
+) {
   const supabase = useMemo(() => createClient(), []);
-  const [convs, setConvs] = useState<Conv[]>([]);
-  const [convsLoaded, setConvsLoaded] = useState(false);
+  const seeded = initialConversations !== undefined;
+  const [convs, setConvs] = useState<Conv[]>(initialConversations ?? []);
+  const [convsLoaded, setConvsLoaded] = useState(seeded);
   const [typingMap, setTypingMap] = useState<Record<string, boolean>>({});
   const typingTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(
     new Map()
@@ -71,7 +75,7 @@ export function useConversations(getSelectedId: () => string | null) {
   }, [supabase]);
 
   useEffect(() => {
-    loadConvs();
+    if (!seeded) loadConvs();
     const schedule = () => {
       if (refreshTimer.current) clearTimeout(refreshTimer.current);
       refreshTimer.current = setTimeout(loadConvs, 800);

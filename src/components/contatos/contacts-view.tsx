@@ -96,7 +96,7 @@ export function ContactsView({ contacts }: { contacts: ContactRow[] }) {
       company: String(f.get("company") ?? ""),
     });
     setSaving(false);
-    if (r?.error) {
+    if ("error" in r && r.error) {
       toast(r.error, { type: "error" });
       return;
     }
@@ -141,7 +141,7 @@ export function ContactsView({ contacts }: { contacts: ContactRow[] }) {
     startTransition(async () => {
       const r = await attachLeadToPipeline(c.id);
       setPendingId(null);
-      if (r?.error) toast(r.error, { type: "error" });
+      if ("error" in r && r.error) toast(r.error, { type: "error" });
       else {
         toast("Negócio criado no funil.");
         router.refresh();

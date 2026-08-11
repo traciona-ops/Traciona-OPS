@@ -29,6 +29,7 @@ import { MetricsPanel } from "@/components/chat/workspace/metrics-panel";
 import { EmptyState } from "@/components/chat/workspace/empty-state";
 import type {
   ChatNumber,
+  ChatThreadSeed,
   Conv,
   ConvFilters,
   LeadContext,
@@ -63,6 +64,18 @@ function convFromLead(l: {
   };
 }
 
+function resolveInitialSelected(
+  initialLeadId: string | undefined,
+  initialConversations: Conv[] | undefined,
+  initialThread: ChatThreadSeed | undefined
+): Conv | null {
+  if (!initialLeadId || !initialThread) return null;
+  const conv = initialConversations?.find((c) => c.lead_id === initialLeadId);
+  if (conv) return conv;
+  const l = initialThread.context.lead;
+  return convFromLead({ ...l, in_pipeline: !!l.pipeline_id });
+}
+
 /**
  * A mensageria em si (lista + conversa + painel do lead). Usada em dois
  * lugares: dentro do modal flutuante (variant "modal") e na página /chat em
@@ -72,6 +85,8 @@ export function ChatWorkspace({
   currentUserId,
   userName,
   initialLeadId,
+  initialConversations,
+  initialThread,
   initialPrefsOpen = false,
   variant = "modal",
   onClose,
@@ -80,6 +95,10 @@ export function ChatWorkspace({
   userName: string;
   /** Abre direto essa conversa (ex.: ?lead= da página cheia). */
   initialLeadId?: string;
+  /** Lista pré-carregada no RSC — evita RPC vazio no mount de /chat. */
+  initialConversations?: Conv[];
+  /** Thread + contexto pré-carregados quando ?lead= está presente. */
+  initialThread?: ChatThreadSeed;
   /** Abre direto nas preferências (?prefs=1 — usado pelo banner de reconexão). */
   initialPrefsOpen?: boolean;
   variant?: "modal" | "page";
@@ -92,17 +111,25 @@ export function ChatWorkspace({
   const [accent, setAccent] = useChatAccent();
 
   // conversa aberta e o que ela carrega
-  const [selected, setSelected] = useState<Conv | null>(null);
-  const [msgs, setMsgs] = useState<WhatsappMessage[]>([]);
-  const [context, setContext] = useState<LeadContext | null>(null);
-  const [quickReplies, setQuickReplies] = useState<QuickReply[]>([]);
-  const [connected, setConnected] = useState(false);
+  const [selected, setSelected] = useState<Conv | null>(() =>
+    resolveInitialSelected(initialLeadId, initialConversations, initialThread)
+  );
+  const [msgs, setMsgs] = useState<WhatsappMessage[]>(
+    () => initialThread?.messages ?? []
+  );
+  const [context, setContext] = useState<LeadContext | null>(
+    () => initialThread?.context ?? null
+  );
+  const [quickReplies, setQuickReplies] = useState<QuickReply[]>(
+    () => initialThread?.quickReplies ?? []
+  );
+  const [connected, setConnected] = useState(initialThread?.connected ?? false);
   const [loadingThread, setLoadingThread] = useState(false);
   const selectedRef = useRef<string | null>(null);
   selectedRef.current = selected?.lead_id ?? null;
 
   const { convs, convsLoaded, loadConvs, typingMap, unreadTotal } =
-    useConversations(() => selectedRef.current);
+    useConversations(() => selectedRef.current, initialConversations);
 
   // telas alternativas da coluna do meio
   const [connOpen, setConnOpen] = useState(initialPrefsOpen);
@@ -180,7 +207,7 @@ export function ChatWorkspace({
   }
 
   // ?lead= na página cheia (ou deep-link): abre a conversa direto
-  const initialOpened = useRef(false);
+  const initialOpened = useRef(!!initialThread);
   useEffect(() => {
     if (!initialLeadId || initialOpened.current || !convsLoaded) return;
     initialOpened.current = true;
@@ -210,6 +237,16 @@ export function ChatWorkspace({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialLeadId, convsLoaded]);
+
+  // conversa aberta via seed com não-lidas → marca lida (openThread faria isso)
+  useEffect(() => {
+    if (!initialThread || !initialLeadId) return;
+    const conv = initialConversations?.find((c) => c.lead_id === initialLeadId);
+    if (conv && conv.unread > 0) {
+      markConversationRead(initialLeadId).then(loadConvs);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function pickLead(l: LeadHit) {
     setNewOpen(false);

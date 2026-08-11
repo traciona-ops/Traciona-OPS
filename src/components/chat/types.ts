@@ -6,6 +6,7 @@ import type {
   Meeting,
   PipelineStage,
   Profile,
+  QuickReply,
   ScheduledMessage,
   Sector,
   WhatsappMessage,
@@ -70,4 +71,12 @@ export type ChatLead = {
   name: string;
   phone: string | null;
   avatar_url: string | null;
+};
+
+/** Thread + contexto pré-carregados no RSC de /chat (?lead=). */
+export type ChatThreadSeed = {
+  messages: WhatsappMessage[];
+  context: LeadContext;
+  quickReplies: QuickReply[];
+  connected: boolean;
 };
