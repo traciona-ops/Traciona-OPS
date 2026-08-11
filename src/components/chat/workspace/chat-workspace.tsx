@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useRole } from "@/components/context/role-context";
 import { can } from "@/lib/permissions";
 import { useChatAccent } from "@/hooks/use-chat-accent";
 import { useConversations } from "@/hooks/use-conversations";
-import { createClient } from "@/lib/supabase/client";
 import {
   deleteConversation,
   fetchDockContext,
@@ -20,15 +19,18 @@ import {
 import { ChatPanel } from "@/components/chat/conversation/chat-panel";
 import { LeadPanel } from "@/components/chat/conversation/lead-panel";
 import { ConversationList } from "@/components/chat/workspace/conversation-list/conversation-list";
-import { ListHeader } from "@/components/chat/workspace/conversation-list/list-header";
+import { NumberHeader } from "@/components/chat/workspace/shell/number-header";
+import { ChatRail } from "@/components/chat/workspace/shell/chat-rail";
+import type { ChatView } from "@/components/chat/workspace/shell/types";
 import {
   NewConversation,
   type LeadHit,
 } from "@/components/chat/workspace/conversation-list/new-conversation";
 import { ChatSettings } from "@/components/chat/workspace/settings/chat-settings";
-import { MetricsPanel } from "@/components/chat/workspace/metrics-panel";
 import { EmptyState } from "@/components/chat/workspace/empty-state";
-import { QueueSidebar } from "@/components/chat/workspace/conversation-list/queue-sidebar";
+import { MyDashboard } from "@/components/chat/workspace/dashboards/my-dashboard";
+import { OpsDashboard } from "@/components/chat/workspace/dashboards/ops-dashboard";
+import { QueuesAdmin } from "@/components/chat/workspace/queues/queues-admin";
 import type {
   ChatNumber,
   Conv,
@@ -37,7 +39,6 @@ import type {
 } from "@/components/chat/types";
 import type { QuickReply, Sector, WhatsappMessage } from "@/lib/types";
 
-/** Conversa "vazia" montada a partir de um lead que ainda não tem thread. */
 function convFromLead(l: {
   id: string;
   name: string;
@@ -66,9 +67,8 @@ function convFromLead(l: {
 }
 
 /**
- * A mensageria em si (lista + conversa + painel do lead). Usada em dois
- * lugares: dentro do modal flutuante (variant "modal") e na página /chat em
- * tela cheia (variant "page").
+ * Shell OPS Chat (estilo GronerZap): rail + views
+ * inbox | minha dash | ops dash | filas | settings.
  */
 export function ChatWorkspace({
   currentUserId,
@@ -80,20 +80,21 @@ export function ChatWorkspace({
 }: {
   currentUserId: string;
   userName: string;
-  /** Abre direto essa conversa (ex.: ?lead= da página cheia). */
   initialLeadId?: string;
-  /** Abre direto nas preferências (?prefs=1 — usado pelo banner de reconexão). */
   initialPrefsOpen?: boolean;
   variant?: "modal" | "page";
   onClose?: () => void;
 }) {
-  const supabase = useMemo(() => createClient(), []);
   const role = useRole();
   const isAdmin = can.manageTeam(role);
+  const isManager = can.viewReports(role);
   const canDelete = can.deleteLead(role);
   const [accent, setAccent] = useChatAccent();
 
-  // conversa aberta e o que ela carrega
+  const [view, setView] = useState<ChatView>(
+    initialPrefsOpen ? "settings" : "inbox"
+  );
+
   const [selected, setSelected] = useState<Conv | null>(null);
   const [msgs, setMsgs] = useState<WhatsappMessage[]>([]);
   const [context, setContext] = useState<LeadContext | null>(null);
@@ -106,10 +107,6 @@ export function ChatWorkspace({
   const { convs, convsLoaded, loadConvs, typingMap, unreadTotal } =
     useConversations(() => selectedRef.current);
 
-  // telas alternativas da coluna do meio
-  const [connOpen, setConnOpen] = useState(initialPrefsOpen);
-  const [metricsOpen, setMetricsOpen] = useState(false);
-  // popovers do cabeçalho
   const [menuOpen, setMenuOpen] = useState(false);
   const [numMenuOpen, setNumMenuOpen] = useState(false);
   const [newOpen, setNewOpen] = useState(false);
@@ -125,14 +122,10 @@ export function ChatWorkspace({
   const patchFilters = (patch: Partial<ConvFilters>) =>
     setFilters((f) => ({ ...f, ...patch }));
 
-  const [listMode, setListMode] = useState<"crm" | "queues">("crm");
   const [sessionsEnabled, setSessionsEnabled] = useState(false);
   const [queueTick, setQueueTick] = useState(0);
-
   const [chatNumbers, setChatNumbers] = useState<ChatNumber[]>([]);
-  const [team, setTeam] = useState<{ id: string; name: string }[]>([]);
 
-  // status REAL da conexão na abertura (antes só chegava ao abrir uma conversa)
   useEffect(() => {
     getConnectionStatus().then((s) => setConnected(s.connected));
     listChatNumbers().then((r) => {
@@ -141,18 +134,6 @@ export function ChatWorkspace({
     getChatSettings().then((s) => setSessionsEnabled(!!s.sessions_enabled));
   }, []);
 
-  // time (pro filtro por responsável)
-  useEffect(() => {
-    if (team.length > 0) return;
-    supabase
-      .from("profiles")
-      .select("id, name")
-      .eq("active", true)
-      .order("name")
-      .then(({ data }) => setTeam((data ?? []) as { id: string; name: string }[]));
-  }, [team.length, supabase]);
-
-  // popovers (não-modais): Escape fecha, igual ao padrão dos menus do sistema
   useEffect(() => {
     if (!numMenuOpen && !menuOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -174,6 +155,7 @@ export function ChatWorkspace({
   }
 
   async function openThread(c: Conv) {
+    setView("inbox");
     setSelected(c);
     setContext(null);
     setLoadingThread(true);
@@ -186,17 +168,15 @@ export function ChatWorkspace({
     if (c.unread > 0) markConversationRead(c.lead_id).then(loadConvs);
   }
 
-  // ?lead= na página cheia (ou deep-link): abre a conversa direto
   const initialOpened = useRef(false);
   useEffect(() => {
     if (!initialLeadId || initialOpened.current || !convsLoaded) return;
     initialOpened.current = true;
     const conv = convs.find((c) => c.lead_id === initialLeadId);
     if (conv) {
-      openThread(conv);
+      void openThread(conv);
       return;
     }
-    // lead sem conversa ainda: monta a partir do contexto
     fetchDockContext(initialLeadId).then((r) => {
       if (!("context" in r)) return;
       const l = (
@@ -211,16 +191,14 @@ export function ChatWorkspace({
           };
         }
       ).lead;
-      openThread(
-        convFromLead({ ...l, in_pipeline: !!l.pipeline_id })
-      );
+      void openThread(convFromLead({ ...l, in_pipeline: !!l.pipeline_id }));
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialLeadId, convsLoaded]);
 
   function pickLead(l: LeadHit) {
     setNewOpen(false);
-    openThread(convFromLead(l));
+    void openThread(convFromLead(l));
   }
 
   async function markAll() {
@@ -235,6 +213,7 @@ export function ChatWorkspace({
     if (reloading) return;
     setReloading(true);
     await loadConvs();
+    setQueueTick((t) => t + 1);
     if (selectedRef.current) {
       const [thread] = await Promise.all([
         fetchThread(selectedRef.current),
@@ -272,181 +251,207 @@ export function ChatWorkspace({
     loadConvs();
   }
 
-  /** Painel e lista juntos: setor/valor/tag mudou → o filtro enxerga. */
   async function refreshSelected() {
     if (!selected) return;
     await loadContext(selected.lead_id);
     loadConvs();
   }
 
+  function goView(v: ChatView) {
+    setView(v);
+    if (v !== "inbox") {
+      setNewOpen(false);
+      setMenuOpen(false);
+      setNumMenuOpen(false);
+    } else {
+      getChatSettings().then((s) => setSessionsEnabled(!!s.sessions_enabled));
+    }
+  }
+
+  const numberLabel =
+    filters.number === "todos"
+      ? chatNumbers.find((n) => n.env_default)?.name ??
+        chatNumbers[0]?.name ??
+        "Todos"
+      : chatNumbers.find((n) => (n.env_default ? "principal" : n.id) === filters.number)
+          ?.name ?? "Número";
+
+  const activeNumberId =
+    filters.number === "todos" || filters.number === "principal"
+      ? null
+      : filters.number;
+
+  const showInboxChrome = view === "inbox";
+
   return (
     <div
       className="flex h-full w-full flex-1 overflow-hidden bg-[var(--color-surface)]"
       style={{ "--chat-accent": accent } as React.CSSProperties}
     >
-      <ConversationList
-        hidden={connOpen}
-        collapsed={!!selected}
-        header={
-          <ListHeader
-            connected={connected}
-            unreadTotal={unreadTotal}
-            userName={userName}
-            variant={variant}
-            chatNumbers={chatNumbers}
-            numFilter={filters.number}
-            onNumFilter={(v) => patchFilters({ number: v })}
-            numMenuOpen={numMenuOpen}
-            onNumMenuOpen={setNumMenuOpen}
-            newOpen={newOpen}
-            onNewOpen={setNewOpen}
-            menuOpen={menuOpen}
-            onMenuOpen={setMenuOpen}
-            markingAll={markingAll}
-            onMarkAll={markAll}
-            reloading={reloading}
-            onReload={reloadAll}
-            onOpenMetrics={() => {
-              setMetricsOpen((o) => !o);
-              setConnOpen(false);
-            }}
-            onOpenSettings={() => {
-              setConnOpen(true);
-              setMetricsOpen(false);
-            }}
-            selectedLeadId={selected?.lead_id ?? null}
-            onClose={onClose}
-          />
-        }
-        newPanel={
-          newOpen ? (
-            <NewConversation onPick={pickLead} onCreated={loadConvs} />
-          ) : null
-        }
-        filters={filters}
-        onFilters={patchFilters}
-        chatNumbers={chatNumbers}
-        team={team}
-        convs={convs}
-        typingMap={typingMap}
-        selectedId={selected?.lead_id ?? null}
-        onOpen={openThread}
-        currentUserId={currentUserId}
-        listMode={listMode}
-        onListMode={setListMode}
-        sessionsEnabled={sessionsEnabled}
-        queuePanel={
-          <QueueSidebar
-            enabled={sessionsEnabled && listMode === "queues"}
-            selectedLeadId={selected?.lead_id ?? null}
-            currentUserId={currentUserId}
-            countsTick={queueTick}
-            onOpen={(c) => {
-              void openThread(c);
-            }}
-          />
-        }
+      <ChatRail
+        view={view}
+        onView={goView}
+        unreadTotal={unreadTotal}
+        isManager={isManager}
       />
 
-      {/* coluna do meio: configurações, métricas, conversa ou vazio */}
-      <div
-        className={`min-w-0 flex-1 flex-col ${
-          selected || connOpen || metricsOpen ? "flex" : "hidden sm:flex"
-        }`}
-      >
-        {connOpen ? (
-          <ChatSettings
-            isAdmin={isAdmin}
-            connected={connected}
-            accent={accent}
-            onAccent={setAccent}
-            onClose={() => {
-              setConnOpen(false);
-              getChatSettings().then((s) =>
-                setSessionsEnabled(!!s.sessions_enabled)
-              );
-            }}
-          />
-        ) : metricsOpen ? (
-          <MetricsPanel
-            convs={convs}
-            accent={accent}
-            onBack={() => setMetricsOpen(false)}
-          />
-        ) : selected ? (
-          <>
-            {/* barra mobile: voltar pra lista */}
-            <div className="flex items-center gap-2 border-b border-[var(--color-border)] px-2 py-1.5 sm:hidden">
-              <button
-                onClick={() => setSelected(null)}
-                className="flex min-h-9 min-w-9 items-center justify-center rounded-[var(--radius-control)] text-[var(--color-muted-2)]"
-                aria-label="Voltar"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </button>
-              <span className="text-sm font-medium">{selected.name}</span>
-            </div>
-            {loadingThread ? (
-              <div className="flex flex-1 items-center justify-center">
-                <Loader2 className="h-6 w-6 animate-spin text-[var(--color-muted)]" />
-              </div>
-            ) : (
-              <ChatPanel
-                key={selected.lead_id}
-                lead={{
-                  id: selected.lead_id,
-                  name: selected.name,
-                  phone: selected.phone,
-                  avatar_url: selected.avatar_url,
-                }}
-                messages={msgs}
-                connected={connected}
-                quickReplies={quickReplies}
-                userName={userName}
-                currentUserId={currentUserId}
-                sessionsEnabled={sessionsEnabled}
-                owner={
-                  context
-                    ? context.lead.owner
-                      ? { id: context.lead.owner.id, name: context.lead.owner.name }
-                      : null
-                    : undefined
-                }
-                inPipeline={context ? !!context.lead.pipeline_id : undefined}
-                onBack={closeThread}
-                onDelete={canDelete ? deleteCurrent : undefined}
-                onOwnerChanged={refreshSelected}
-                onSessionChanged={async () => {
-                  setQueueTick((t) => t + 1);
-                  await refreshSelected();
-                }}
-                onSync={async () => {
-                  const [thread] = await Promise.all([
-                    fetchThread(selected.lead_id),
-                    loadContext(selected.lead_id),
-                  ]);
-                  if ("messages" in thread) {
-                    setMsgs(thread.messages as WhatsappMessage[]);
-                  }
-                  loadConvs();
-                }}
-              />
-            )}
-          </>
-        ) : (
-          <EmptyState />
-        )}
-      </div>
+      {view === "my-dash" && (
+        <MyDashboard userName={userName} numberId={activeNumberId} />
+      )}
+      {view === "ops-dash" && isManager && (
+        <OpsDashboard numberLabel={numberLabel} numberId={activeNumberId} />
+      )}
+      {view === "queues" && isManager && <QueuesAdmin />}
+      {view === "settings" && (
+        <ChatSettings
+          isAdmin={isAdmin}
+          connected={connected}
+          accent={accent}
+          onAccent={setAccent}
+          onClose={() => goView("inbox")}
+          onOpenQueues={() => goView("queues")}
+        />
+      )}
 
-      {/* painel do lead (etapa, transferir, tags, tarefas, notas...) */}
-      {selected && context && !loadingThread && (
-        <div className="hidden xl:flex">
-          <LeadPanel
-            context={context}
+      {showInboxChrome && (
+        <>
+          <ConversationList
+            hidden={false}
+            collapsed={!!selected}
+            header={
+              <NumberHeader
+                connected={connected}
+                unreadTotal={unreadTotal}
+                userName={userName}
+                variant={variant}
+                chatNumbers={chatNumbers}
+                numFilter={filters.number}
+                onNumFilter={(v) => patchFilters({ number: v })}
+                numMenuOpen={numMenuOpen}
+                onNumMenuOpen={setNumMenuOpen}
+                newOpen={newOpen}
+                onNewOpen={setNewOpen}
+                menuOpen={menuOpen}
+                onMenuOpen={setMenuOpen}
+                markingAll={markingAll}
+                onMarkAll={markAll}
+                reloading={reloading}
+                onReload={reloadAll}
+                onOpenMyDash={() => goView("my-dash")}
+                onOpenOpsDash={() => goView("ops-dash")}
+                onOpenSettings={() => goView("settings")}
+                selectedLeadId={selected?.lead_id ?? null}
+                onClose={onClose}
+                showOpsDash={isManager}
+              />
+            }
+            newPanel={
+              newOpen ? (
+                <NewConversation onPick={pickLead} onCreated={loadConvs} />
+              ) : null
+            }
+            filters={filters}
+            onFilters={patchFilters}
+            convs={
+              filters.number === "todos"
+                ? convs
+                : convs.filter(
+                    (c) => (c.number_id ?? "principal") === filters.number
+                  )
+            }
+            typingMap={typingMap}
+            selectedId={selected?.lead_id ?? null}
+            onOpen={(c) => void openThread(c)}
             currentUserId={currentUserId}
-            onChanged={refreshSelected}
+            sessionsEnabled={sessionsEnabled}
+            countsTick={queueTick}
           />
-        </div>
+
+          <div
+            className={`min-w-0 flex-1 flex-col ${
+              selected ? "flex" : "hidden sm:flex"
+            }`}
+          >
+            {selected ? (
+              <>
+                <div className="flex items-center gap-2 border-b border-[var(--color-border)] px-2 py-1.5 sm:hidden">
+                  <button
+                    type="button"
+                    onClick={() => setSelected(null)}
+                    className="flex min-h-9 min-w-9 items-center justify-center rounded-lg text-[var(--color-muted-2)]"
+                    aria-label="Voltar"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </button>
+                  <span className="text-sm font-medium">{selected.name}</span>
+                </div>
+                {loadingThread ? (
+                  <div className="flex flex-1 items-center justify-center">
+                    <Loader2 className="h-6 w-6 animate-spin text-[var(--color-muted)]" />
+                  </div>
+                ) : (
+                  <ChatPanel
+                    key={selected.lead_id}
+                    lead={{
+                      id: selected.lead_id,
+                      name: selected.name,
+                      phone: selected.phone,
+                      avatar_url: selected.avatar_url,
+                    }}
+                    messages={msgs}
+                    connected={connected}
+                    quickReplies={quickReplies}
+                    userName={userName}
+                    currentUserId={currentUserId}
+                    sessionsEnabled={sessionsEnabled}
+                    owner={
+                      context
+                        ? context.lead.owner
+                          ? {
+                              id: context.lead.owner.id,
+                              name: context.lead.owner.name,
+                            }
+                          : null
+                        : undefined
+                    }
+                    inPipeline={
+                      context ? !!context.lead.pipeline_id : undefined
+                    }
+                    onBack={closeThread}
+                    onDelete={canDelete ? deleteCurrent : undefined}
+                    onOwnerChanged={refreshSelected}
+                    onSessionChanged={async () => {
+                      setQueueTick((t) => t + 1);
+                      await refreshSelected();
+                    }}
+                    onSync={async () => {
+                      const [thread] = await Promise.all([
+                        fetchThread(selected.lead_id),
+                        loadContext(selected.lead_id),
+                      ]);
+                      if ("messages" in thread) {
+                        setMsgs(thread.messages as WhatsappMessage[]);
+                      }
+                      loadConvs();
+                    }}
+                  />
+                )}
+              </>
+            ) : (
+              <EmptyState />
+            )}
+          </div>
+
+          {selected && context && !loadingThread && (
+            <div className="hidden xl:flex">
+              <LeadPanel
+                context={context}
+                currentUserId={currentUserId}
+                onChanged={refreshSelected}
+              />
+            </div>
+          )}
+        </>
       )}
     </div>
   );

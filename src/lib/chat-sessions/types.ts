@@ -59,4 +59,33 @@ export type InboxSessionRow = {
   unread: number;
 };
 
-export type QueueTab = "waiting" | "active" | "paused";
+/** Tabs do shell: Aguardando | Em atendimento | Encerradas | Minhas | Todas (+ paused legado). */
+export type QueueTab =
+  | "waiting"
+  | "active"
+  | "paused"
+  | "closed"
+  | "mine"
+  | "all";
+
+export type SessionMetricsScope = "me" | "team";
+
+export type SessionMetrics = {
+  range_days: number;
+  waiting: number;
+  waiting_for_me: number;
+  active: number;
+  paused: number;
+  closed_in_range: number;
+  started_in_range: number;
+  unread: number;
+  unassigned: number;
+  avg_wait_seconds: number | null;
+  max_wait_seconds: number | null;
+  avg_handle_seconds: number | null;
+  sla_on_time_pct: number | null;
+  csat_avg: number | null;
+  by_agent: { user_id: string; name: string; count: number }[];
+  by_sector: { sector: string; count: number }[];
+  presence: { online: number; offline: number };
+};

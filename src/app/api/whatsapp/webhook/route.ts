@@ -238,9 +238,9 @@ export async function POST(req: Request) {
           if (!presLeadId) {
             // lid desconhecido (contato salvo que nunca mandou mensagem):
             // cruza a agenda na hora e persiste o aprendizado.
-            const { resolveLidToLead } = await import("@/lib/whatsapp/lids");
+            const { resolveLidToLead } = await import("@/lib/services/whatsapp/lids");
             const { tokenForNumberId } = await import(
-              "@/lib/whatsapp/numbers"
+              "@/lib/services/whatsapp/numbers"
             );
             const authToken = numberId
               ? await tokenForNumberId(numberId)

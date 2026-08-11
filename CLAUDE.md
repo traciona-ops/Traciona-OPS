@@ -31,7 +31,7 @@ Sempre que uma alteração mudar a **estrutura** do projeto — módulo novo, ro
     - `lib/utils/` — helpers puros (`dates`, `masks`, `slug`, `extenso`, `media`, `ui` — este último tem `cn`, `formatPhone`, `currencyBRL`, `readableInk`).
     - `lib/data/` — conteúdo estático: `labels.ts` (rótulos e cores de `SECTOR`, `SOURCE_LABEL`, `TASK_*`, `AUTOMATION_*`), `modules.ts`, `contract-templates/`. Mudar coisa aqui não muda comportamento.
     - `lib/supabase/` — clients.
-    - `lib/chat-sessions/` — sessões de atendimento (híbrido CRM + helpdesk): ensure/lifecycle/ACD/SLA; migração `0050_chat_sessions.sql`; actions em `crm/session-actions.ts`; flag `org_settings.chat.sessions_enabled` (default off).
+    - `lib/chat-sessions/` — sessões de atendimento (híbrido CRM + helpdesk): ensure/lifecycle/ACD/SLA; migrações `0050_chat_sessions.sql` + `0051_inbox_session_tabs.sql`; actions em `crm/session-actions.ts`; flag `org_settings.chat.sessions_enabled` (default off).
   - `src/lib/types.ts` guarda **só tipos** — nenhuma constante. Rótulo/cor vai pra `lib/data/labels.ts`.
   - `src/types/` — `.d.ts` de libs sem tipagem.
   - `scripts/` — manutenção (`db-run.mjs`, `db-query.mjs`, `migrate.mjs`, `importa-asaas.mjs`); `scripts/checks/` — verificações pontuais de navegador; `tests/e2e/` — Playwright versionado. A raiz do repo só guarda config.
@@ -40,12 +40,15 @@ Sempre que uma alteração mudar a **estrutura** do projeto — módulo novo, ro
 - **Removidos em 07/08/2026** (a pedido, código apagado; commit anterior à remoção guardado no git): Dashboards, Ops Apps, Onboarding, Briefings, Prompts & IA, e com eles o setor "Operações & Projetos" e o link público `/o/[token]`. As tabelas `onboarding_requests`, `briefings`, `briefing_comments`, `prompts`, `prompt_versions`, `prompt_folders` e `dashboards` seguem no banco, órfãs e vazias. A meta do mês, que era editada em Dashboards, passou a ser editável no Início (`GoalBar`, admin/gestor).
 - **Links públicos:** `/f/[token]` (OPS Form) — usa `createAdminClient()` (service role).
 - **WhatsApp:** DinastiAPI (wuzapi) — envio, webhook em `/api/whatsapp/webhook` (ingest live + HistorySync; stub de `133bdb6` restaurado), sessão/QR, áudio convertido antes do envio. OPS Chat em `/chat` + chat dock.
-- **Chat (`src/components/chat/`):** módulo único do OPS Chat — antes eram `inbox-view.tsx` (2,2k linhas) e `chat-dock.tsx` (2k). Divide-se em:
-  - `conversation/` — a conversa de um lead. `chat-panel.tsx` monta `chat-header` + `session-actions` + `message-list` + `composer/message-composer`; `lead-panel/` em seções.
-  - `workspace/` — `chat-workspace.tsx` orquestra `conversation-list/` (inclui **`queue-sidebar`**), settings, metrics, empty-state. Modo **Conversas** | **Filas** quando `sessions_enabled`.
-  - Hooks: `useChatMessages`, `useChatScroll`, `useTypingPresence`, `useAudioRecorder`, `useConversations`, `useUnreadCount`, `useChatAccent`, **`useActiveSession`**, **`useQueueSessions`**.
-  - **Sessões (híbrido):** timeline por `lead_id`; `chat_sessions` overlay (waiting/active/paused/closed). Inbound abre sessão se flag ligada; outbound só anexa; HistorySync não cria. VIP etapa `Proposta` → assignee = `leads.owner_id`.
-  - O dock e a página `/chat` são a MESMA árvore.
+- **Chat (`src/components/chat/`):** módulo único do OPS Chat — dock e `/chat` compartilham a mesma árvore.
+  - **Shell (estilo GronerZap):** `workspace/shell/` (`ChatRail`, `NumberHeader`) + `view` em `chat-workspace.tsx`: `inbox` | `my-dash` | `ops-dash` | `queues` | `settings`. Tokens Traciona (`var(--color-*)`, `--chat-accent`).
+  - `conversation/` — `chat-panel` = header + `session-actions` + message-list + composer; `lead-panel/`.
+  - `workspace/conversation-list/` — pills **Aguardando | Em atendimento | Encerradas | Minhas | Todas** (`queue-pills-list`) quando `sessions_enabled`; sem flag, Minhas/Todas sobre CRM.
+  - `workspace/dashboards/` — Minha dashboard + Dashboard de atendimentos (`getSessionMetrics`).
+  - `workspace/queues/queues-admin.tsx` — CRUD de `chat_queues` (modo pull/ACD, SLA, expediente, CSAT).
+  - Settings: números + toggles (assinatura, auto card, sessions_enabled, CSAT da fila) + atalho expediente/SLA.
+  - Hooks: `useChatMessages`, `useChatScroll`, `useTypingPresence`, `useAudioRecorder`, `useConversations`, `useUnreadCount`, `useChatAccent`, `useActiveSession`, `useQueueSessions`.
+  - **Sessões (híbrido):** `lib/chat-sessions/` + migrações `0050_chat_sessions.sql` / `0051_inbox_session_tabs.sql`. Timeline por `lead_id`; overlay waiting/active/paused/closed. Flag `org_settings.chat.sessions_enabled` (default off). CSAT agenda `csat_due_at` no close — job de envio ainda não.
   - Verificação: `node scripts/checks/chat-refactor-check.mjs http://localhost:3000`.
 - **Cron (`/api/cron/dispatch`, 391 linhas — faz tudo inline):** pg_cron (jobid 1, `* * * * *`) chama a rota com header `x-cron-secret`; sem o secret certo, 401. Um tique faz, nesta ordem: (0) devolve pra fila mensagem presa em `processing` há mais de 10 min; (1) claim ATÔMICO das agendadas vencidas (`UPDATE ... WHERE status='pending' RETURNING` — dois tiques sobrepostos nunca pegam a mesma linha), envia, grava em `whatsapp_messages` e atualiza `last_contact_at`, com 3 tentativas e 5 min entre elas; (2) `runTimeAutomations`; (3) `sweepAvatars`/`sweepNumberNames`/`sweepLids`; (4) sync dos contratos "enviado" na Autentique (3 por tique, rate limit) → assinado dispara comprovante no WhatsApp e `createSaleFromContract`; (5) guardião por número: status da sessão, presença global (`available` só com alguém no OPS Chat nos últimos 5 min) e re-aponta webhook/assinatura quando saem do lugar. Cada etapa em `try` própria — uma falhando não derruba as outras. Env vars: `CRON_SECRET`, `WHATSAPP_WEBHOOK_SECRET`.
   - **Trava do guardião:** o webhook só é re-apontado quando o host é público. Rodar o dispatcher em `localhost` apontaria o webhook de PRODUÇÃO pra um endereço que a DinastiAPI não alcança, e o recebimento pararia calado. Não remova esse `hostIsPublic`.
