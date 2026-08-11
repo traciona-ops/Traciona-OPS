@@ -7,6 +7,7 @@ graphify-out/
 *.log
 playwright-report/
 test-results/
+scripts/checks/*.png
 .auth/
 .claude/settings.json.graphify-bak
 tsconfig.tsbuildinfo

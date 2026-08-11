@@ -1,9 +1,9 @@
-// Verificação E2E do refactor do chat: o módulo src/components/chat/
-// (workspace + conversa) ainda renderiza e reage como antes?
+// Verificação E2E do módulo src/components/chat/ (workspace + conversa):
+// o shell estilo GronerZap renderiza e reage?
 //
-// SÓ LEITURA nos dados de lead: abre uma conversa existente, confere lista,
-// filtros, cabeçalho, bolhas, composer, respostas rápidas, painel do lead,
-// central de configurações, métricas e o botão flutuante do dock.
+// SÓ LEITURA nos dados de lead: percorre o rail (conversas, dashboards, filas,
+// configurações), abre uma conversa existente e confere lista, pills, cabeçalho,
+// bolhas, composer, respostas rápidas, painel do lead e o botão flutuante do dock.
 // Nada é enviado, agendado ou alterado. Roda contra o dev local.
 import { chromium } from "playwright";
 import { createClient } from "@supabase/supabase-js";
@@ -82,17 +82,50 @@ try {
   await page.click('button[type="submit"]');
   await page.waitForURL((u) => !String(u).includes("/login"), { timeout: 40000 });
 
+  // o header mostra o nome do número ativo, então o rail é a âncora estável
   await page.goto(`${APP}/chat`, { waitUntil: "domcontentloaded" });
-  await page.waitForSelector("text=OPS Chat", { timeout: 60000 });
+  await page.waitForSelector('nav[aria-label="Navegação do chat"]', {
+    timeout: 60000,
+  });
   await page.waitForTimeout(3000);
 
-  // abre a primeira conversa da lista (viewport fixo → posição estável)
+  // --- Rail do shell (ChatRail) ---
+  const rail = page.locator('nav[aria-label="Navegação do chat"]');
+  check("shell: rail renderiza", (await rail.count()) > 0);
+  for (const label of [
+    "Conversas",
+    "Minha dashboard",
+    "Dashboard de atendimentos",
+    "Filas de atendimento",
+    "Configurações",
+  ]) {
+    check(
+      `rail: ${label}`,
+      (await rail.getByRole("button", { name: label }).count()) > 0
+    );
+  }
+
+  // "Todas" é a timeline do CRM — as pills de fila dependem de sessão aberta,
+  // que pode não existir. Garante a lista cheia antes de abrir uma conversa.
+  const pillTodas = page
+    .locator("aside button")
+    .filter({ hasText: /^Todas/ })
+    .first();
+  if (await pillTodas.count()) {
+    await pillTodas.click();
+    await page.waitForTimeout(1500);
+  }
+
+  // abre a primeira conversa da lista (linha da lista, não coordenada fixa)
+  const primeiraConversa = page
+    .locator("aside div.overflow-y-auto > button")
+    .first();
   if (!(await page.locator("textarea").count())) {
-    await page.mouse.click(160, 195);
-    await page
-      .waitForSelector("textarea", { timeout: 40000 })
-      .catch(() => {});
-    await page.waitForTimeout(2000);
+    if (await primeiraConversa.count()) {
+      await primeiraConversa.click();
+      await page.waitForSelector("textarea", { timeout: 40000 }).catch(() => {});
+      await page.waitForTimeout(2000);
+    }
   }
 
   // --- Composer (MessageComposer) ---
@@ -205,33 +238,26 @@ try {
     check(`painel do lead: seção ${needle}`, body.includes(needle));
   }
 
-  // --- Lista de conversas (ConversationList + ListFilters + ListHeader) ---
-  check(
-    "lista: campo de busca",
-    await page.getByPlaceholder("Buscar conversa").isVisible().catch(() => false)
-  );
-  check(
-    "lista: filtro de setor",
-    (await page.locator("select").filter({ hasText: "Todos os setores" }).count()) > 0
-  );
-  check(
-    "lista: filtro de responsável",
-    (await page.locator("select").filter({ hasText: "Todos os responsáveis" }).count()) >
-      0
-  );
+  // --- Lista de conversas (ConversationList + QueuePillsList) ---
+  const busca = page.getByPlaceholder("Pesquisar conversas");
+  check("lista: campo de busca", await busca.isVisible().catch(() => false));
 
-  // filtro que não casa → estado vazio com "Limpar filtros"
-  await page.getByPlaceholder("Buscar conversa").fill("zzzzzznaoexiste");
+  // Sem sessions_enabled só existem as pills de CRM (Minhas/Todas); com a flag
+  // ligada entram Aguardando/Em atendimento/Encerradas.
+  const pills = page.locator("aside button").filter({ hasText: /^(Minhas|Todas)/ });
+  check("lista: pills de fila", (await pills.count()) >= 2);
+
+  // busca que não casa → estado vazio
+  await busca.fill("zzzzzznaoexiste");
   await page.waitForTimeout(700);
   check(
-    "lista: estado vazio de filtro",
-    (await page.locator("text=Nenhuma conversa com esses filtros").count()) > 0 &&
-      (await page.locator("text=Limpar filtros").count()) > 0
+    "lista: estado vazio de busca",
+    (await page.locator("text=Nenhuma conversa com esses filtros").count()) > 0
   );
-  await page.locator("text=Limpar filtros").first().click();
+  await busca.fill("");
   await page.waitForTimeout(700);
   check(
-    "lista: limpar filtros traz as conversas de volta",
+    "lista: limpar a busca traz as conversas de volta",
     (await page.locator("text=Nenhuma conversa com esses filtros").count()) === 0
   );
 
@@ -253,47 +279,65 @@ try {
     check("painel de nova conversa abre", false, "botão não encontrado");
   }
 
-  // --- Menu ⋮ → Métricas (MetricsPanel) ---
+  // --- Views do rail: dashboards e filas ---
+  const irPara = async (label) => {
+    await rail.getByRole("button", { name: label }).click();
+    await page.waitForTimeout(2000);
+  };
+
+  await irPara("Minha dashboard");
+  check(
+    "view: minha dashboard renderiza",
+    (await page.getByRole("heading", { name: "Minha dashboard" }).count()) > 0 &&
+      (await page.locator("text=Tempo médio de atendimento").count()) > 0
+  );
+
+  await irPara("Dashboard de atendimentos");
+  check(
+    "view: dashboard de atendimentos renderiza",
+    (await page.getByRole("heading", { name: "Dashboard de atendimentos" }).count()) > 0
+  );
+
+  await irPara("Filas de atendimento");
+  check(
+    "view: admin de filas renderiza",
+    (await page.getByRole("heading", { name: "Filas de atendimento" }).count()) > 0
+  );
+
+  await irPara("Conversas");
+  check(
+    "rail volta pras conversas",
+    await busca.isVisible().catch(() => false)
+  );
+
+  // --- Menu ⋮ do header do número ---
   const maisBtn = page.getByRole("button", { name: "Mais opções" }).first();
   if (await maisBtn.count()) {
     await maisBtn.click();
     await page.waitForTimeout(500);
     check(
       "menu ⋮ abre",
-      (await page.locator("text=Métricas das conversas").count()) > 0
+      (await page.locator("text=Marcar todas como lidas").count()) > 0 &&
+        (await page.locator("text=Recarregar chat").count()) > 0
     );
-    await page.locator("text=Métricas das conversas").first().click();
-    await page.waitForTimeout(1800);
-    check(
-      "painel de métricas renderiza",
-      (await page.locator("text=Funil das conversas").count()) > 0 &&
-        (await page.locator("text=Recebidas hoje").count()) > 0
-    );
-    await page.locator("text=Voltar pras conversas").first().click();
-    await page.waitForTimeout(700);
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(400);
 
-    // --- Menu ⋮ → Configurações (ChatSettings) ---
-    await maisBtn.click();
-    await page.waitForTimeout(500);
-    await page.locator("text=Configurações").first().click();
-    await page.waitForTimeout(1200);
+    // --- Configurações pelo rail (ChatSettings) ---
+    // Admin cai direto na seção Números; o menu fica um "Voltar" atrás.
+    await irPara("Configurações");
+    const voltar = () => page.getByRole("button", { name: "Voltar" }).first();
+    check(
+      "configurações → Números (lista + toggles)",
+      (await page.locator("text=Configurações do número").count()) > 0
+    );
+
+    await voltar().click();
+    await page.waitForTimeout(800);
     const temMenuPrefs =
       (await page.locator("text=Mensagens Rápidas").count()) > 0 &&
       (await page.locator("text=Preferências").count()) > 0;
-    check("central de configurações abre", temMenuPrefs);
-
-    // seção Número (admin) — só abre pra ver se monta; não conecta nada
-    if (temMenuPrefs && (await page.locator("text=Número").count()) > 0) {
-      await page.locator("text=Número").first().click();
-      await page.waitForTimeout(2500);
-      check(
-        "configurações → Número (lista + toggles)",
-        (await page.locator("text=Números").count()) > 0 &&
-          (await page.locator("text=Configurações do número").count()) > 0
-      );
-      await page.getByRole("button", { name: "Voltar" }).first().click();
-      await page.waitForTimeout(600);
-    }
+    check("central de configurações abre (menu)", temMenuPrefs);
 
     // seção Mensagens Rápidas — só leitura da lista
     if (temMenuPrefs) {
@@ -304,7 +348,7 @@ try {
         (await page.locator("text=Templates").count()) > 0 &&
           (await page.locator("text=Novo template").count()) > 0
       );
-      await page.getByRole("button", { name: "Voltar" }).first().click();
+      await voltar().click();
       await page.waitForTimeout(600);
     }
 
@@ -317,14 +361,14 @@ try {
         (await page.locator("text=Cor do chat").count()) > 0
       );
       // volta pro menu e sai da central
-      await page.getByRole("button", { name: "Voltar" }).first().click();
+      await voltar().click();
       await page.waitForTimeout(500);
-      await page.getByRole("button", { name: "Voltar" }).first().click();
+      await voltar().click();
       await page.waitForTimeout(800);
     }
     check(
       "sai das configurações e volta pra lista",
-      await page.getByPlaceholder("Buscar conversa").isVisible().catch(() => false)
+      await busca.isVisible().catch(() => false)
     );
   }
 
@@ -351,15 +395,16 @@ try {
   if (temDock) {
     await dockBtn.click();
     await page.waitForTimeout(3000);
+    const buscaDock = page.getByPlaceholder("Pesquisar conversas");
     check(
       "dock: modal abre com a lista de conversas",
-      await page.getByPlaceholder("Buscar conversa").isVisible().catch(() => false)
+      await buscaDock.isVisible().catch(() => false)
     );
     await page.keyboard.press("Escape");
     await page.waitForTimeout(600);
     check(
       "dock: Escape fecha o modal",
-      !(await page.getByPlaceholder("Buscar conversa").isVisible().catch(() => false))
+      !(await buscaDock.isVisible().catch(() => false))
     );
   }
 } catch (e) {

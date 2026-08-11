@@ -1,5 +1,5 @@
 -- =============================================================
--- 0051 — Amplia inbox_sessions: closed / mine / all
+-- 0052 — Amplia inbox_sessions: closed / mine / all
 -- Tabs do shell GronerZap: Aguardando | Em atendimento | Encerradas | Minhas | Todas
 -- =============================================================
 

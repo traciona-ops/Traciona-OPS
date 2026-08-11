@@ -21,6 +21,13 @@ const CRM_PILLS: { id: QueueTab; label: string }[] = [
   { id: "all", label: "Todas" },
 ];
 
+/**
+ * Abas servidas pelas sessões (o overlay de fila). Minhas/Todas ficam sempre na
+ * timeline do CRM: a sessão é episódio, a conversa do lead é contínua — sem
+ * isso, ligar a flag esconderia todas as conversas até chegar mensagem nova.
+ */
+const SESSION_TABS = new Set<QueueTab>(["waiting", "active", "paused", "closed"]);
+
 function sessionToConv(s: InboxSessionRow): Conv {
   return {
     lead_id: s.lead_id,
@@ -82,8 +89,12 @@ export function QueuePillsList({
   crmConvs: Conv[];
   typingMap: Record<string, boolean>;
 }) {
-  const [tab, setTab] = useState<QueueTab>(sessionsEnabled ? "waiting" : "all");
-  const { sessions, loaded } = useQueueSessions(tab, sessionsEnabled);
+  // "Todas" é a única aba que existe nos dois modos e nunca chega vazia por
+  // falta de sessão — o valor inicial não pode depender de `sessionsEnabled`,
+  // que chega assíncrono e mudaria a aba conforme a ordem de montagem.
+  const [tab, setTab] = useState<QueueTab>("all");
+  const isSessionTab = sessionsEnabled && SESSION_TABS.has(tab);
+  const { sessions, loaded } = useQueueSessions(tab, isSessionTab);
 
   const [counts, setCounts] = useState<Partial<Record<QueueTab, number>>>({});
 
@@ -93,7 +104,7 @@ export function QueuePillsList({
       return;
     }
     void (async () => {
-      const tabs: QueueTab[] = ["waiting", "active", "closed", "mine", "all"];
+      const tabs: QueueTab[] = ["waiting", "active", "closed"];
       const results = await Promise.all(tabs.map((t) => listQueueSessions(t)));
       const next: Partial<Record<QueueTab, number>> = {};
       tabs.forEach((t, i) => {
@@ -131,7 +142,7 @@ export function QueuePillsList({
         <div className="mt-2 flex flex-wrap gap-1.5">
           {pills.map((p) => {
             const active = tab === p.id;
-            const count = sessionsEnabled
+            const count = SESSION_TABS.has(p.id)
               ? counts[p.id]
               : p.id === "mine"
                 ? crmConvs.filter((c) => c.owner_id === currentUserId).length
@@ -156,7 +167,7 @@ export function QueuePillsList({
       </div>
 
       <div className="flex-1 divide-y divide-[var(--color-border)]/60 overflow-y-auto">
-        {sessionsEnabled ? (
+        {isSessionTab ? (
           !loaded ? (
             <p className="px-4 py-8 text-center text-xs text-[var(--color-muted-2)]">
               Carregando…
