@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { ensureActiveSession } from "@/lib/chat-sessions/ensure-active-session";
 
 export type PersistOutboundInput = {
   leadId: string;
@@ -18,6 +19,18 @@ export async function persistOutboundMessage(
   db: SupabaseClient,
   input: PersistOutboundInput
 ): Promise<{ id?: string; error?: string }> {
+  let sessionId: string | null = null;
+  try {
+    const sess = await ensureActiveSession(db, {
+      leadId: input.leadId,
+      numberId: input.numberId ?? null,
+      direction: "out",
+    });
+    sessionId = sess.sessionId;
+  } catch {
+    // sessão nunca bloqueia o envio
+  }
+
   const row: Record<string, unknown> = {
     lead_id: input.leadId,
     direction: "out",
@@ -30,6 +43,7 @@ export async function persistOutboundMessage(
     provider: "dinastia",
     provider_msg_id: input.provider_msg_id,
     sent_by: input.sent_by,
+    session_id: sessionId,
   };
   if (input.numberId !== undefined) row.number_id = input.numberId;
 

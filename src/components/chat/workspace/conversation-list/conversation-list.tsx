@@ -48,6 +48,10 @@ export function ConversationList({
   selectedId,
   onOpen,
   currentUserId,
+  listMode = "crm",
+  onListMode,
+  sessionsEnabled = false,
+  queuePanel,
 }: {
   /** A central de Configurações abriu: a lista sai de cena. */
   hidden: boolean;
@@ -64,6 +68,10 @@ export function ConversationList({
   selectedId: string | null;
   onOpen: (c: Conv) => void;
   currentUserId: string;
+  listMode?: "crm" | "queues";
+  onListMode?: (m: "crm" | "queues") => void;
+  sessionsEnabled?: boolean;
+  queuePanel?: React.ReactNode;
 }) {
   const visible = filterConvs(convs, filters, currentUserId);
   const filtering =
@@ -83,49 +91,77 @@ export function ConversationList({
       }
     >
       {header}
+      {sessionsEnabled && onListMode && (
+        <div className="flex gap-1 border-b border-[var(--color-border)] px-2 py-1.5">
+          {(
+            [
+              { id: "crm" as const, label: "Conversas" },
+              { id: "queues" as const, label: "Filas" },
+            ] as const
+          ).map((m) => (
+            <button
+              key={m.id}
+              onClick={() => onListMode(m.id)}
+              className={`flex-1 rounded-lg px-2 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] ${
+                listMode === m.id
+                  ? "bg-[var(--color-surface-2)] text-[var(--color-foreground)]"
+                  : "text-[var(--color-muted-2)] hover:bg-[var(--color-surface-2)]/60"
+              }`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      )}
       {newPanel}
-      <ListFilters
-        filters={filters}
-        onChange={onFilters}
-        chatNumbers={chatNumbers}
-        team={team}
-      />
-      <div className="flex-1 divide-y divide-[var(--color-border)]/60 overflow-y-auto">
-        {visible.map((c) => (
-          <ConversationRow
-            key={c.lead_id}
-            conv={c}
-            active={selectedId === c.lead_id}
-            typing={!!typingMap[c.lead_id]}
-            onOpen={() => onOpen(c)}
+      {listMode === "queues" && sessionsEnabled ? (
+        queuePanel
+      ) : (
+        <>
+          <ListFilters
+            filters={filters}
+            onChange={onFilters}
+            chatNumbers={chatNumbers}
+            team={team}
           />
-        ))}
-        {visible.length === 0 && (
-          <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
-            <div className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-control)] bg-[var(--color-surface-2)]">
-              <Search className="h-5 w-5 text-[var(--color-muted-2)]" />
-            </div>
-            <p className="text-xs text-[var(--color-muted)]">
-              Nenhuma conversa com esses filtros.
-            </p>
-            {filtering && (
-              <button
-                onClick={() =>
-                  onFilters({
-                    sector: "todos",
-                    owner: "todos",
-                    number: "todos",
-                    search: "",
-                  })
-                }
-                className="text-xs font-medium text-[var(--color-primary)] hover:underline"
-              >
-                Limpar filtros
-              </button>
+          <div className="flex-1 divide-y divide-[var(--color-border)]/60 overflow-y-auto">
+            {visible.map((c) => (
+              <ConversationRow
+                key={c.lead_id}
+                conv={c}
+                active={selectedId === c.lead_id}
+                typing={!!typingMap[c.lead_id]}
+                onOpen={() => onOpen(c)}
+              />
+            ))}
+            {visible.length === 0 && (
+              <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
+                <div className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-control)] bg-[var(--color-surface-2)]">
+                  <Search className="h-5 w-5 text-[var(--color-muted-2)]" />
+                </div>
+                <p className="text-xs text-[var(--color-muted)]">
+                  Nenhuma conversa com esses filtros.
+                </p>
+                {filtering && (
+                  <button
+                    onClick={() =>
+                      onFilters({
+                        sector: "todos",
+                        owner: "todos",
+                        number: "todos",
+                        search: "",
+                      })
+                    }
+                    className="text-xs font-medium text-[var(--color-primary)] hover:underline"
+                  >
+                    Limpar filtros
+                  </button>
+                )}
+              </div>
             )}
           </div>
-        )}
-      </div>
+        </>
+      )}
     </aside>
   );
 }

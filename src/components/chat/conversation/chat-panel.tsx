@@ -7,6 +7,7 @@ import { useTypingPresence } from "@/hooks/use-typing-presence";
 import { ChatHeader } from "@/components/chat/conversation/chat-header";
 import { MessageList } from "@/components/chat/conversation/message-list";
 import { MessageComposer } from "@/components/chat/conversation/composer/message-composer";
+import { useActiveSession } from "@/hooks/use-active-session";
 import type { ChatLead, ChatMessage } from "@/components/chat/types";
 import type { QuickReply } from "@/lib/types";
 
@@ -23,6 +24,8 @@ export function ChatPanel({
   owner,
   currentUserId,
   inPipeline,
+  sessionsEnabled = false,
+  onSessionChanged,
   onSync,
   onOwnerChanged,
   onDelete,
@@ -38,6 +41,9 @@ export function ChatPanel({
   currentUserId?: string;
   /** false = conversa sem card no funil → mostra "Adicionar ao funil". */
   inPipeline?: boolean;
+  /** Filas híbridas ligadas (org_settings.chat.sessions_enabled). */
+  sessionsEnabled?: boolean;
+  onSessionChanged?: () => void | Promise<void>;
   /** Sincronizar: o dock re-busca o thread; sem callback, refresh da página. */
   onSync?: () => void | Promise<void>;
   onOwnerChanged?: () => void | Promise<void>;
@@ -53,6 +59,10 @@ export function ChatPanel({
   const { contactTyping, pingTyping, stopTyping } = useTypingPresence(
     lead.id,
     !!lead.phone
+  );
+  const { session, reload: reloadSession } = useActiveSession(
+    lead.id,
+    sessionsEnabled
   );
 
   // Responder mensagem (citação estilo WhatsApp)
@@ -73,6 +83,11 @@ export function ChatPanel({
         currentUserId={currentUserId}
         inPipeline={inPipeline}
         contactTyping={contactTyping}
+        session={sessionsEnabled ? session : null}
+        onSessionChanged={async () => {
+          await reloadSession();
+          await onSessionChanged?.();
+        }}
         onSync={onSync}
         onOwnerChanged={onOwnerChanged}
         onDelete={onDelete}

@@ -156,6 +156,8 @@ export interface WhatsappMessage {
   /** Citação (responder mensagem): trecho e autor ('in'/'out') da citada */
   reply_to_body?: string | null;
   reply_to_dir?: string | null;
+  /** Sessão de atendimento (helpdesk); null = fora de ticket / pré-híbrido */
+  session_id?: string | null;
   created_at: string;
 }
 

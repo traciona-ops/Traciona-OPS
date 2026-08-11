@@ -9,6 +9,7 @@ import {
   findOrCreateWaLead,
 } from "@/lib/whatsapp/leads";
 import { storeInboundMedia } from "@/lib/whatsapp/media-store";
+import { ensureActiveSession } from "@/lib/chat-sessions/ensure-active-session";
 
 type AnyObj = Record<string, any>;
 
@@ -189,9 +190,22 @@ export async function ingestLiveMessage(
     }
   }
 
+  let sessionId: string | null = null;
+  try {
+    const sess = await ensureActiveSession(admin, {
+      leadId,
+      numberId,
+      direction: fromMe ? "out" : "in",
+    });
+    sessionId = sess.sessionId;
+  } catch (e) {
+    console.log("[WH] sessão falhou (msg segue):", (e as Error).message);
+  }
+
   const { error: insErr } = await admin.from("whatsapp_messages").insert({
     lead_id: leadId,
     number_id: numberId,
+    session_id: sessionId,
     reply_to_body,
     reply_to_dir,
     direction: fromMe ? "out" : "in",

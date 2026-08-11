@@ -60,7 +60,11 @@ export async function getConnectionStatus(): Promise<{ connected: boolean }> {
 
 // ---------- Configurações do número (chat) ----------
 
-export type ChatSettings = { signature: boolean; auto_create_card: boolean };
+export type ChatSettings = {
+  signature: boolean;
+  auto_create_card: boolean;
+  sessions_enabled: boolean;
+};
 
 export async function getChatSettings(): Promise<ChatSettings> {
   const supabase = await createClient();
@@ -73,6 +77,7 @@ export async function getChatSettings(): Promise<ChatSettings> {
   return {
     signature: !!v.signature,
     auto_create_card: !!v.auto_create_card,
+    sessions_enabled: !!v.sessions_enabled,
   };
 }
 
@@ -85,6 +90,14 @@ export async function updateChatSettings(patch: Partial<ChatSettings>) {
     .from("org_settings")
     .upsert({ key: "chat", value: next, updated_at: new Date().toISOString() });
   if (error) return { error: error.message };
+  try {
+    const { bustSessionsSettingsCache } = await import(
+      "@/lib/chat-sessions/settings"
+    );
+    bustSessionsSettingsCache();
+  } catch {
+    // cache só no server do webhook
+  }
   return { ok: true, settings: next };
 }
 
