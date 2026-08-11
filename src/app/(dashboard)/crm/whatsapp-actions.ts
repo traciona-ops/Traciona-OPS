@@ -16,7 +16,27 @@ import {
   type MediaKind,
 } from "@/lib/services/whatsapp/dinastia";
 import { resolveLeadNumber } from "@/lib/services/whatsapp/numbers";
+import { ensureActiveSession } from "@/lib/chat-sessions/ensure-active-session";
+import { bustSessionsSettingsCache } from "@/lib/chat-sessions/settings";
 import { SECTOR } from "@/lib/data/labels";
+
+/** Anexa session_id se houver sessão aberta (nunca cria no outbound). */
+async function resolveOutboundSessionId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  leadId: string,
+  numberId: string | null
+): Promise<string | null> {
+  try {
+    const sess = await ensureActiveSession(supabase, {
+      leadId,
+      numberId,
+      direction: "out",
+    });
+    return sess.sessionId;
+  } catch {
+    return null;
+  }
+}
 
 export async function sendWhatsappMessage(
   leadId: string,
@@ -75,10 +95,13 @@ export async function sendWhatsappMessage(
       : undefined
   );
 
+  const sessionId = await resolveOutboundSessionId(supabase, leadId, numberId);
+
   // Grava a mensagem (status reflete sucesso/falha do envio)
   const { error: insErr } = await supabase.from("whatsapp_messages").insert({
     lead_id: leadId,
     number_id: numberId,
+    session_id: sessionId,
     direction: "out",
     body: text,
     reply_to_body: replyTo
@@ -172,9 +195,12 @@ export async function sendWhatsappMedia(formData: FormData) {
     authToken
   );
 
+  const sessionId = await resolveOutboundSessionId(supabase, leadId, numberId);
+
   await supabase.from("whatsapp_messages").insert({
     lead_id: leadId,
     number_id: numberId,
+    session_id: sessionId,
     direction: "out",
     body: caption || null,
     media_url: publicUrl,
@@ -609,7 +635,11 @@ export async function deleteConversation(leadId: string) {
 
 // ---------- Configurações do número (chat) ----------
 
-export type ChatSettings = { signature: boolean; auto_create_card: boolean };
+export type ChatSettings = {
+  signature: boolean;
+  auto_create_card: boolean;
+  sessions_enabled: boolean;
+};
 
 export async function getChatSettings(): Promise<ChatSettings> {
   const supabase = await createClient();
@@ -622,6 +652,7 @@ export async function getChatSettings(): Promise<ChatSettings> {
   return {
     signature: !!v.signature,
     auto_create_card: !!v.auto_create_card,
+    sessions_enabled: !!v.sessions_enabled,
   };
 }
 
@@ -634,6 +665,7 @@ export async function updateChatSettings(patch: Partial<ChatSettings>) {
     .from("org_settings")
     .upsert({ key: "chat", value: next, updated_at: new Date().toISOString() });
   if (error) return { error: error.message };
+  bustSessionsSettingsCache();
   return { ok: true, settings: next };
 }
 

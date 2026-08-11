@@ -11,6 +11,7 @@ import {
   deleteConversation,
   fetchDockContext,
   fetchThread,
+  getChatSettings,
   getConnectionStatus,
   listChatNumbers,
   markAllConversationsRead,
@@ -27,6 +28,7 @@ import {
 import { ChatSettings } from "@/components/chat/workspace/settings/chat-settings";
 import { MetricsPanel } from "@/components/chat/workspace/metrics-panel";
 import { EmptyState } from "@/components/chat/workspace/empty-state";
+import { QueueSidebar } from "@/components/chat/workspace/conversation-list/queue-sidebar";
 import type {
   ChatNumber,
   Conv,
@@ -123,6 +125,10 @@ export function ChatWorkspace({
   const patchFilters = (patch: Partial<ConvFilters>) =>
     setFilters((f) => ({ ...f, ...patch }));
 
+  const [listMode, setListMode] = useState<"crm" | "queues">("crm");
+  const [sessionsEnabled, setSessionsEnabled] = useState(false);
+  const [queueTick, setQueueTick] = useState(0);
+
   const [chatNumbers, setChatNumbers] = useState<ChatNumber[]>([]);
   const [team, setTeam] = useState<{ id: string; name: string }[]>([]);
 
@@ -132,6 +138,7 @@ export function ChatWorkspace({
     listChatNumbers().then((r) => {
       if ("numbers" in r && r.numbers) setChatNumbers(r.numbers);
     });
+    getChatSettings().then((s) => setSessionsEnabled(!!s.sessions_enabled));
   }, []);
 
   // time (pro filtro por responsável)
@@ -325,6 +332,20 @@ export function ChatWorkspace({
         selectedId={selected?.lead_id ?? null}
         onOpen={openThread}
         currentUserId={currentUserId}
+        listMode={listMode}
+        onListMode={setListMode}
+        sessionsEnabled={sessionsEnabled}
+        queuePanel={
+          <QueueSidebar
+            enabled={sessionsEnabled && listMode === "queues"}
+            selectedLeadId={selected?.lead_id ?? null}
+            currentUserId={currentUserId}
+            countsTick={queueTick}
+            onOpen={(c) => {
+              void openThread(c);
+            }}
+          />
+        }
       />
 
       {/* coluna do meio: configurações, métricas, conversa ou vazio */}
@@ -339,7 +360,12 @@ export function ChatWorkspace({
             connected={connected}
             accent={accent}
             onAccent={setAccent}
-            onClose={() => setConnOpen(false)}
+            onClose={() => {
+              setConnOpen(false);
+              getChatSettings().then((s) =>
+                setSessionsEnabled(!!s.sessions_enabled)
+              );
+            }}
           />
         ) : metricsOpen ? (
           <MetricsPanel
@@ -378,6 +404,7 @@ export function ChatWorkspace({
                 quickReplies={quickReplies}
                 userName={userName}
                 currentUserId={currentUserId}
+                sessionsEnabled={sessionsEnabled}
                 owner={
                   context
                     ? context.lead.owner
@@ -389,6 +416,10 @@ export function ChatWorkspace({
                 onBack={closeThread}
                 onDelete={canDelete ? deleteCurrent : undefined}
                 onOwnerChanged={refreshSelected}
+                onSessionChanged={async () => {
+                  setQueueTick((t) => t + 1);
+                  await refreshSelected();
+                }}
                 onSync={async () => {
                   const [thread] = await Promise.all([
                     fetchThread(selected.lead_id),

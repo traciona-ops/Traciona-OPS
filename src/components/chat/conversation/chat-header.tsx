@@ -27,6 +27,8 @@ import {
   updateLead,
 } from "@/app/(dashboard)/crm/actions";
 import type { ChatLead } from "@/components/chat/types";
+import { SessionActions } from "@/components/chat/conversation/session-actions";
+import type { ActiveSession } from "@/hooks/use-active-session";
 
 type HistoryEvent = { id: string; at: string; text: string; by: string | null };
 
@@ -104,6 +106,8 @@ export function ChatHeader({
   currentUserId,
   inPipeline,
   contactTyping,
+  session,
+  onSessionChanged,
   onSync,
   onOwnerChanged,
   onDelete,
@@ -116,6 +120,9 @@ export function ChatHeader({
   /** false = conversa sem card no funil → mostra "Adicionar ao funil". */
   inPipeline?: boolean;
   contactTyping: boolean;
+  /** Sessão de atendimento aberta (filas híbridas). */
+  session?: ActiveSession | null;
+  onSessionChanged?: () => void | Promise<void>;
   /** Sincronizar: o dock re-busca o thread; sem callback, refresh da página. */
   onSync?: () => void | Promise<void>;
   onOwnerChanged?: () => void | Promise<void>;
@@ -174,8 +181,40 @@ export function ChatHeader({
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <p className="truncate text-sm font-medium">{lead.name}</p>
-            {/* status de atendimento (dono da conversa) */}
-            {owner !== undefined &&
+            {session ? (
+              <span
+                className={`flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                  session.status === "waiting"
+                    ? "bg-[var(--color-warning)]/15 text-[var(--color-warning)]"
+                    : session.status === "paused"
+                      ? "bg-[var(--color-muted)]/20 text-[var(--color-muted)]"
+                      : "bg-[var(--color-success)]/12 text-[var(--color-success)]"
+                }`}
+              >
+                <Headset className="h-3 w-3" />
+                {session.status === "waiting" && (
+                  <>
+                    <span className="sm:hidden">Aguardando</span>
+                    <span className="hidden sm:inline">Aguardando na fila</span>
+                  </>
+                )}
+                {session.status === "active" && (
+                  <>
+                    <span className="hidden sm:inline">Em atendimento&nbsp;·&nbsp;</span>
+                    {session.assignee_id === currentUserId
+                      ? "você"
+                      : (session.assignee_name ?? "—").split(" ")[0]}
+                  </>
+                )}
+                {session.status === "paused" && (
+                  <>
+                    <span className="sm:hidden">Pausado</span>
+                    <span className="hidden sm:inline">Pausado · aguardando cliente</span>
+                  </>
+                )}
+              </span>
+            ) : (
+              owner !== undefined &&
               (owner ? (
                 <span className="flex shrink-0 items-center gap-1 rounded-full bg-[var(--color-success)]/12 px-2 py-0.5 text-[11px] font-semibold text-[var(--color-success)]">
                   <Headset className="h-3 w-3" />
@@ -187,7 +226,8 @@ export function ChatHeader({
                   <span className="sm:hidden">Aguardando</span>
                   <span className="hidden sm:inline">Aguardando atendimento</span>
                 </span>
-              ))}
+              ))
+            )}
           </div>
           {contactTyping ? (
             <p className="text-xs font-medium italic text-[var(--color-success)]">
@@ -205,6 +245,13 @@ export function ChatHeader({
       </div>
 
       <div className="flex shrink-0 items-center gap-1">
+        {session && (
+          <SessionActions
+            session={session}
+            currentUserId={currentUserId}
+            onChanged={onSessionChanged}
+          />
+        )}
         {inPipeline === false && (
           <button
             onClick={addToPipeline}
@@ -221,7 +268,7 @@ export function ChatHeader({
             <span className="hidden sm:inline">Adicionar ao funil</span>
           </button>
         )}
-        {owner === null && currentUserId && (
+        {!session && owner === null && currentUserId && (
           <button
             onClick={startService}
             disabled={starting}
