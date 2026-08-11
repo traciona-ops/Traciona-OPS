@@ -83,8 +83,16 @@ export async function getChatSettings(): Promise<ChatSettings> {
 
 export async function updateChatSettings(patch: Partial<ChatSettings>) {
   const supabase = await createClient();
-  const current = await getChatSettings();
-  const next = { ...current, ...patch };
+  // Grava por cima do JSON cru, não do tipo: `chat` guarda chaves que esta tela
+  // não conhece (`vip_stage_names`, por exemplo) e reconstruir o objeto a partir
+  // de ChatSettings apagaria elas em silêncio a cada toggle.
+  const { data } = await supabase
+    .from("org_settings")
+    .select("value")
+    .eq("key", "chat")
+    .maybeSingle();
+  const raw = (data?.value ?? {}) as Record<string, unknown>;
+  const next = { ...raw, ...patch };
   // RLS: só admin/gestor consegue gravar
   const { error } = await supabase
     .from("org_settings")
@@ -98,7 +106,12 @@ export async function updateChatSettings(patch: Partial<ChatSettings>) {
   } catch {
     // cache só no server do webhook
   }
-  return { ok: true, settings: next };
+  const settings: ChatSettings = {
+    signature: !!next.signature,
+    auto_create_card: !!next.auto_create_card,
+    sessions_enabled: !!next.sessions_enabled,
+  };
+  return { ok: true, settings };
 }
 
 /**
